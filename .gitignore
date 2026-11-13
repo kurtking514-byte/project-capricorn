@@ -1,0 +1,25 @@
+# Gradle / build output
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+
+# Android Studio
+.idea/
+*.iml
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Signing keys — never commit these
+*.jks
+*.keystore
+
+# Skins with personal art stay on your own machine
+skins/
+
+# OS junk
+.DS_Store
+Thumbs.db

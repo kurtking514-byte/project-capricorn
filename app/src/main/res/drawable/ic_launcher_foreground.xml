@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Pink "C" arc -->
+    <path
+        android:pathData="M68,38 A20,20 0 1,0 68,70"
+        android:strokeColor="#FF2E97"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <!-- Green biochip -->
+    <path
+        android:pathData="M48,48 h12 v12 h-12 z"
+        android:strokeColor="#39FF88"
+        android:strokeWidth="3"
+        android:fillColor="#00000000" />
+    <!-- Blue core -->
+    <path
+        android:pathData="M52,52 h4 v4 h-4 z"
+        android:fillColor="#4FC3FF" />
+</vector>
