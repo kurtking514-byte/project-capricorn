@@ -50,7 +50,7 @@ A fan-made Android home-screen launcher built around **Capri (Project Capricorn)
   - calm/efficient (morning), sarcastic/chaotic (night), protective (low battery or too much screen time).
   - short glitch effect when a psyche switches.
 - Reacts to phone state: charging, low battery, notifications, time of day.
-- **Biochip motif:** unlock/boot shows "Biochip linked. Capri online."; AI loading shows "Merging psyches… ▓▓▓░░"; settings screen styled as "construct config".
+- **No generic "system online" text.** Her identity is visual: boot and loading moments use her floating green face, glitches and scanlines, not typed status messages.
 
 ### Gestures on Capri (all remappable)
 | Gesture | Default |
@@ -137,7 +137,29 @@ A fan-made Android home-screen launcher built around **Capri (Project Capricorn)
 
 ## Progress
 
-- **2026-11-11:** Phase 1 code written (not yet compiled or run, since Android Studio isn't installed yet): launcher activity, neon clock, dock (long-press → pin, max 5), swipe-up drawer with search / frequent / A–Z, pull-down or Back to close, boot sequence. Gradle wrapper JAR and `gradlew` scripts are not in the repo yet; Android Studio uses `gradle-wrapper.properties` directly, and `gradle wrapper` can add them later.
+- **2026-11-11:** Phase 1 code written (not yet compiled or run, since Android Studio isn't installed yet): launcher activity, neon clock, dock (long-press → pin, max 5), swipe-up drawer with search / frequent / A–Z, pull-down or Back to close, boot sequence. Gradle wrapper (`gradlew`) added 2026-11-13.
+- **2026-11-13:** Phase 1 builds and runs on the Realme 12 Pro+ (Android Studio, JVM 21). Pushed to GitHub as the first commit.
+- **2026-11-13:** Replaced the typed boot text with a wordless animation, and the home placeholder with her idle face.
+- **2026-11-13:** Redrew her face to match the reference video: one green notched panel, two sharp black eyes with blue irises, a floating zigzag mouth (`ui/CapriFace.kt`). Home face blinks and tilts. Compiles cleanly.
+- **2026-11-13:** Big home redesign after user feedback: her small full body stands on the home screen with ~9 fps jitter (`ui/CapriBody.kt`), flat colors only (no gradients/glow), speech panel where she talks, chatbox that runs commands (`capri/CapriBrain.kt`: open apps, alarm, timer, camera, apps, help), new boot (slash → hair burst → blink), new app icon (her face on shard hair). Swipe-up app list kept as a fallback. Builds cleanly; not yet checked on the phone.
+- **2026-11-13:** Adopted the CapriCore look (user supplied its zip): ink/cyan/crimson/acid palette, Exo 2 font, "INCOMING TRANSMISSION" panel, framed viewport with corner brackets and status tag. Added the sprite skin system (`ui/CapriSprite.kt`): frames in `app/src/debug/assets/skin/` (git-ignored) replace the code drawing, with mood poses, blink, talking mouth, jitter, and a 7-frame sprite boot. The user's local skin is CapriCore's sprites, downscaled; they are NOT in the repo because CapriCore's notice grants no redistribution rights to the character art. Builds cleanly; not yet checked on the phone.
+- **2026-11-13:** Mini Capri overlay (`overlay/CapriOverlayService.kt`), built as an accessibility service so it needs one switch and no notification: 74x88dp sprite with jitter and blink floats over other apps, hides on her own home screen. Tap = quick controls panel (screenshot, flashlight, camera, lock, talk to Capri, hide), double-tap = screenshot, long-press = home, drag = move and snap to edge. Chat commands added: overlay, screenshot, lock, flashlight. It does not read screen content (`canRetrieveWindowContent=false`). Builds cleanly; not yet checked on the phone.
+
+## Design rules (from user feedback)
+
+- Her small **full body** on the home screen, never face/eyes only.
+- **Jittery** cut-out motion like the show.
+- **Flat colors only.** No gradients, no glow.
+- The **chatbox** is the main way to do things, and Capri **talks back** in character.
+- A **mini Capri overlay** must stay available over other apps for quick controls, small like in the CapriCore trailer.
+- Boot must be smooth and cool, with no text.
+
+## Capri's look (from the reference video)
+
+- **Default form:** floating face only — one flat green trapezoid panel with notched corners, two sharp black eyes with blue iris rings and white highlights, a separate jagged mouth below. The panel tilts and stretches with her mood.
+- **Big moments:** full form — thin spiky black body under a huge jagged hot-pink shard "hair" mass with sparkle/static texture and green accents.
+- **Effects:** flat cut-out style, hard edges, pink/blue split outlines when glitching; red shards flood the screen when she takes action.
+- **Voice:** playful, cocky, teasing, theatrical, dark humor. Never polite-assistant tone.
 
 ## Phase 0 checklist (do this first)
 
@@ -162,4 +184,4 @@ A fan-made Android home-screen launcher built around **Capri (Project Capricorn)
 - **Package / app ID:** `io.github.kurtking514_byte.capricorn` (hyphen becomes underscore; never change it after release).
 - **App name on the phone:** `Capri`.
 - **Repo description:** "Project Capricorn: a personality construct that lives in your Android home screen. Offline, free, fan-made tribute to Cyberpunk: Edgerunners 2."
-- **First boot screen:** "PROJECT CAPRICORN — biochip linked", then she introduces herself as Capri.
+- **Boot screen:** wordless. Her green face panel draws in, her eyes open, blink once, then she glitches out into the home screen.

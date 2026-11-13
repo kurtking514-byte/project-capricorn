@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Lets Capri set alarms and timers in the system clock app. -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+
     <!-- Needed on Android 11+ to see the list of installed apps for the drawer. -->
     <queries>
         <intent>
@@ -33,5 +36,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Mini Capri floating over other apps, with quick controls. The user switches it on in Accessibility settings. -->
+        <service
+            android:name=".overlay.CapriOverlayService"
+            android:exported="true"
+            android:label="@string/overlay_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/capri_overlay" />
+        </service>
     </application>
 </manifest>

@@ -104,7 +104,7 @@ fun AppDrawer(
     Column(
         Modifier
             .fillMaxSize()
-            .background(CapriColors.Black.copy(alpha = 0.97f))
+            .background(CapriColors.Black)
             .statusBarsPadding()
             .imePadding()
             .nestedScroll(pullToClose)
@@ -121,7 +121,7 @@ fun AppDrawer(
                 Modifier
                     .size(width = 44.dp, height = 4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(CapriColors.Pink.copy(alpha = 0.7f))
+                    .background(CapriColors.Pink)
             )
         }
 
@@ -135,7 +135,7 @@ fun AppDrawer(
             shape = RoundedCornerShape(14.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = CapriColors.Green,
-                unfocusedBorderColor = CapriColors.Pink.copy(alpha = 0.5f),
+                unfocusedBorderColor = CapriColors.Pink,
                 cursorColor = CapriColors.Green,
                 focusedTextColor = CapriColors.Text,
                 unfocusedTextColor = CapriColors.Text,
@@ -174,7 +174,7 @@ fun AppDrawer(
                 if (results.isEmpty()) {
                     item(key = "empty", span = { GridItemSpan(maxLineSpan) }) {
                         Text(
-                            "no match. (Capri will understand commands here in Phase 3.)",
+                            "nothing by that name.",
                             color = CapriColors.Dim,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(16.dp),

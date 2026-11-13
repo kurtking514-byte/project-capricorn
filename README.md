@@ -11,12 +11,17 @@ Capri is an Android launcher built around Capri (Project Capricorn). She project
 
 What works now:
 - Set Capri as your home app
-- Neon clock + date
+- Capri stands on your home screen in her jittery cut-out style, blinks, and reacts when you poke her
+- She talks: her lines type out in a speech panel, and her mouth moves while she speaks
+- Chatbox ("what do you want to do?"): type an app name to open it, or `alarm 7:30`, `timer 10 min`, `photo`, `apps`, `help`
+- App suggestions appear as you type
+- **Mini Capri overlay:** she floats over your other apps. Tap her for quick controls (screenshot, flashlight, camera, lock, back to chat), double-tap for a screenshot, long-press to go home, drag to move her. Turn it on by typing `overlay` in the chatbox.
+- More chat commands: `flashlight`, `screenshot`, `lock`
 - Dock (long-press any app → *Pin to dock*, up to 5)
-- Swipe up for the app drawer: search, frequent apps, A–Z
-- "PROJECT CAPRICORN" boot sequence
+- Swipe up for the full app list
+- Wordless boot: a crimson slash, her shard hair bursts out, she blinks, home fades in
 
-Coming next: Capri herself on screen, commands and gestures, psyche moods, voice, offline AI. See [ANDROID_PLAN.md](ANDROID_PLAN.md) for the full roadmap.
+Coming next: gestures on Capri, roaming, psyche moods, more commands, voice, offline AI. See [ANDROID_PLAN.md](ANDROID_PLAN.md) for the full roadmap.
 
 ## Install
 
@@ -32,7 +37,14 @@ Requires Android 9 or newer.
 
 ## Art & skins
 
-This repo contains **no official artwork**. Capri's look will be loaded from a skin folder, so you can use your own art on your own phone. An original stand-in skin will ship with the app.
+This repo contains **no character artwork**. Out of the box Capri is a simple stand-in drawn in code.
+
+To use real sprites on your own phone, put PNG frames in `app/src/debug/assets/skin/` (that folder is git-ignored, so it never gets published). Frame names are listed at the top of `ui/CapriSprite.kt`; the only required one is `neutral.png`. Only use art you have the right to use, and don't share builds that contain art you can't redistribute.
+
+## Credits
+
+- UI look (ink + cyan + crimson + acid, cut corners, transmission panel) is inspired by [CapriCore](https://github.com/CapriChooms), a fan-made Capri desktop companion. No CapriCore code or artwork is included here.
+- Font: [Exo 2](https://github.com/googlefonts/Exo-2.0), SIL Open Font License (`third_party/Exo2-OFL.txt`).
 
 ## Disclaimer
 

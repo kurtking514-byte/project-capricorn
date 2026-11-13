@@ -5,24 +5,34 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
+import androidx.compose.ui.text.font.FontWeight
+import io.github.kurtking514_byte.capricorn.R
 
-/** Capri's palette: black body, pink + green neon, blue eyes. */
+/**
+ * Flat cyberpunk palette: dark ink background, cyan frames, crimson and acid-yellow accents.
+ * Green is kept for Capri herself. No gradients, no glow.
+ */
 object CapriColors {
-    val Black = Color(0xFF05050A)
-    val Panel = Color(0xFF12121C)
-    val Pink = Color(0xFFFF2E97)
-    val Green = Color(0xFF39FF88)
+    val Black = Color(0xFF080E15)   // ink background
+    val Panel = Color(0xFF0C1A22)   // raised panels
+    val Cyan = Color(0xFF8EF5ED)    // frames, focus
+    val Pink = Color(0xFFFF3C68)    // crimson: her hair, her name, alerts
+    val Acid = Color(0xFFF4ED75)    // highlights
+    val Green = Color(0xFF39FF88)   // Capri's face / body accents
     val Blue = Color(0xFF4FC3FF)
-    val Text = Color(0xFFE8E8F0)
-    val Dim = Color(0xFF8A8AA0)
+    val Text = Color(0xFFE6F4F4)
+    val Dim = Color(0xFF7E949C)
 }
 
 private val scheme = darkColorScheme(
-    primary = CapriColors.Pink,
-    secondary = CapriColors.Green,
-    tertiary = CapriColors.Blue,
+    primary = CapriColors.Cyan,
+    secondary = CapriColors.Pink,
+    tertiary = CapriColors.Acid,
     background = CapriColors.Black,
     surface = CapriColors.Panel,
     onPrimary = CapriColors.Black,
@@ -31,28 +41,36 @@ private val scheme = darkColorScheme(
     onSurface = CapriColors.Text,
 )
 
-private fun TextStyle.mono() = copy(fontFamily = FontFamily.Monospace)
+/** Exo 2 (SIL Open Font License, see third_party/Exo2-OFL.txt). */
+@OptIn(ExperimentalTextApi::class)
+val Exo2 = FontFamily(
+    listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold, FontWeight.Black).map { w ->
+        Font(R.font.exo2, weight = w, variationSettings = FontVariation.Settings(FontVariation.weight(w.weight)))
+    }
+)
+
+private fun TextStyle.exo() = copy(fontFamily = Exo2)
 
 private val base = Typography()
-private val terminalType = Typography(
-    displayLarge = base.displayLarge.mono(),
-    displayMedium = base.displayMedium.mono(),
-    displaySmall = base.displaySmall.mono(),
-    headlineLarge = base.headlineLarge.mono(),
-    headlineMedium = base.headlineMedium.mono(),
-    headlineSmall = base.headlineSmall.mono(),
-    titleLarge = base.titleLarge.mono(),
-    titleMedium = base.titleMedium.mono(),
-    titleSmall = base.titleSmall.mono(),
-    bodyLarge = base.bodyLarge.mono(),
-    bodyMedium = base.bodyMedium.mono(),
-    bodySmall = base.bodySmall.mono(),
-    labelLarge = base.labelLarge.mono(),
-    labelMedium = base.labelMedium.mono(),
-    labelSmall = base.labelSmall.mono(),
+private val capriType = Typography(
+    displayLarge = base.displayLarge.exo(),
+    displayMedium = base.displayMedium.exo(),
+    displaySmall = base.displaySmall.exo(),
+    headlineLarge = base.headlineLarge.exo(),
+    headlineMedium = base.headlineMedium.exo(),
+    headlineSmall = base.headlineSmall.exo(),
+    titleLarge = base.titleLarge.exo(),
+    titleMedium = base.titleMedium.exo(),
+    titleSmall = base.titleSmall.exo(),
+    bodyLarge = base.bodyLarge.exo(),
+    bodyMedium = base.bodyMedium.exo(),
+    bodySmall = base.bodySmall.exo(),
+    labelLarge = base.labelLarge.exo(),
+    labelMedium = base.labelMedium.exo(),
+    labelSmall = base.labelSmall.exo(),
 )
 
 @Composable
 fun CapriTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = scheme, typography = terminalType, content = content)
+    MaterialTheme(colorScheme = scheme, typography = capriType, content = content)
 }

@@ -1,24 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Capri's face on a burst of crimson shard hair. Original drawing, flat colors. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Pink "C" arc -->
+    <!-- violet cut-out edge behind the hair -->
     <path
-        android:pathData="M68,38 A20,20 0 1,0 68,70"
-        android:strokeColor="#FF2E97"
-        android:strokeWidth="6"
+        android:fillColor="#7A3CFF"
+        android:pathData="M55,55 L15,45 L37,43 L21,23 L45,37 L47,15 L57,35 L73,17 L69,39 L95,31 L77,49 L97,61 L73,61 L85,83 L63,67 L55,91 L49,67 L27,81 L39,61 L13,65 Z" />
+    <!-- crimson shard hair -->
+    <path
+        android:fillColor="#FF2152"
+        android:pathData="M54,54 L14,44 L36,42 L20,22 L44,36 L46,14 L56,34 L72,16 L68,38 L94,30 L76,48 L96,60 L72,60 L84,82 L62,66 L54,90 L48,66 L26,80 L38,60 L12,64 Z" />
+    <!-- sparkle static -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,36h1.5v1.5h-1.5z M47,24h1.5v1.5h-1.5z M66,27h1.5v1.5h-1.5z M82,37h1.5v1.5h-1.5z M84,59h1.5v1.5h-1.5z M72,70h1.5v1.5h-1.5z M54,78h1.5v1.5h-1.5z M33,70h1.5v1.5h-1.5z M22,58h1.5v1.5h-1.5z M40,31h1.5v1.5h-1.5z M60,22h1.5v1.5h-1.5z M76,44h1.5v1.5h-1.5z" />
+    <!-- black horns / head -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M31,52 L27,34 L42,43 L54,37 L64,43 L81,33 L77,52 L60,66 L48,66 Z" />
+    <!-- green face panel -->
+    <path
+        android:fillColor="#39FF88"
+        android:pathData="M30,42 L72,42 L74.5,45 L80,42.5 L73,62 L38,62 Z" />
+    <!-- eyes -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M52,53.5 Q44,43 35,49.5 Q44,60 52,53.5 Z M58,53.5 Q66,43 75,49.5 Q66,60 58,53.5 Z" />
+    <path
+        android:fillColor="#1F4FE0"
+        android:pathData="M39.5,51.5 a4.2,4.2 0 1,0 8.4,0 a4.2,4.2 0 1,0 -8.4,0 Z M62.1,51.5 a4.2,4.2 0 1,0 8.4,0 a4.2,4.2 0 1,0 -8.4,0 Z" />
+    <path
+        android:fillColor="#4FC3FF"
+        android:pathData="M40.8,51.5 a2.9,2.9 0 1,0 5.8,0 a2.9,2.9 0 1,0 -5.8,0 Z M63.4,51.5 a2.9,2.9 0 1,0 5.8,0 a2.9,2.9 0 1,0 -5.8,0 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,51.5 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z M64.6,51.5 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z" />
+    <!-- zigzag mouth -->
+    <path
+        android:pathData="M50,67.5 L53,70 L56,66.5 L59,69"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.4"
         android:strokeLineCap="round"
         android:fillColor="#00000000" />
-    <!-- Green biochip -->
-    <path
-        android:pathData="M48,48 h12 v12 h-12 z"
-        android:strokeColor="#39FF88"
-        android:strokeWidth="3"
-        android:fillColor="#00000000" />
-    <!-- Blue core -->
-    <path
-        android:pathData="M52,52 h4 v4 h-4 z"
-        android:fillColor="#4FC3FF" />
 </vector>

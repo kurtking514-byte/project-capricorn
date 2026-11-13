@@ -25,11 +25,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import io.github.kurtking514_byte.capricorn.capri.CapriBrain
 import io.github.kurtking514_byte.capricorn.data.AppEntry
 import io.github.kurtking514_byte.capricorn.data.AppRepository
 import io.github.kurtking514_byte.capricorn.data.Prefs
 import io.github.kurtking514_byte.capricorn.ui.AppDrawer
 import io.github.kurtking514_byte.capricorn.ui.BootOverlay
+import io.github.kurtking514_byte.capricorn.ui.CapriSkin
 import io.github.kurtking514_byte.capricorn.ui.HomeScreen
 import io.github.kurtking514_byte.capricorn.ui.theme.CapriTheme
 import kotlinx.coroutines.Job
@@ -47,6 +49,19 @@ class MainActivity : ComponentActivity() {
     private var showBoot by mutableStateOf(true)
     private var resumeTick by mutableIntStateOf(0)
     private var loadJob: Job? = null
+
+    private lateinit var brain: CapriBrain
+    private var capriLine by mutableStateOf("")
+    private var lineId by mutableIntStateOf(0)
+
+    private var mood by mutableStateOf("neutral")
+    private var skin: CapriSkin? = null
+
+    private fun say(line: String) {
+        capriLine = line
+        mood = brain.mood
+        lineId++
+    }
 
     // Refresh the app list when apps are installed, removed or updated.
     private val packageCallback = object : LauncherApps.Callback() {
@@ -67,6 +82,8 @@ class MainActivity : ComponentActivity() {
 
         repo = AppRepository(this)
         prefs = Prefs(this)
+        brain = CapriBrain(this)
+        skin = CapriSkin.load(this)
         dockKeys = prefs.dock()
         launchCounts = prefs.launchCounts()
         getSystemService(LauncherApps::class.java).registerCallback(packageCallback)
@@ -88,10 +105,18 @@ class MainActivity : ComponentActivity() {
 
                 Box(Modifier.fillMaxSize()) {
                     HomeScreen(
+                        apps = apps,
                         dockApps = dockApps,
+                        dockKeys = dockSet,
+                        skin = skin,
+                        capriLine = capriLine,
+                        lineId = lineId,
+                        mood = mood,
                         resumeTick = resumeTick,
+                        onSubmit = { say(brain.respond(it, apps, ::launchApp) { drawerOpen = true }) },
+                        onPoke = { say(brain.poke()) },
                         onOpenDrawer = { drawerOpen = true },
-                        onLaunch = ::launchApp,
+                        onLaunch = { launchApp(it) },
                         onToggleDock = ::toggleDock,
                         onAppInfo = ::openAppInfo,
                     )
@@ -104,14 +129,19 @@ class MainActivity : ComponentActivity() {
                             apps = apps,
                             frequent = frequent,
                             dockKeys = dockSet,
-                            onLaunch = ::launchApp,
+                            onLaunch = { launchApp(it) },
                             onToggleDock = ::toggleDock,
                             onAppInfo = ::openAppInfo,
                             onClose = { drawerOpen = false },
                         )
                     }
-                    AnimatedVisibility(visible = showBoot, enter = fadeIn(), exit = fadeOut(tween(450))) {
-                        BootOverlay(onDone = { showBoot = false })
+                    AnimatedVisibility(visible = showBoot, enter = fadeIn(), exit = fadeOut(tween(350))) {
+                        BootOverlay(skin = skin, onDone = {
+                            if (showBoot) {
+                                showBoot = false
+                                say(brain.greeting())
+                            }
+                        })
                     }
                 }
             }
@@ -139,15 +169,15 @@ class MainActivity : ComponentActivity() {
         loadJob = lifecycleScope.launch { apps = repo.loadApps() }
     }
 
-    private fun launchApp(app: AppEntry) {
-        try {
-            repo.launch(app)
-            prefs.recordLaunch(app.key)
-            launchCounts = prefs.launchCounts()
-            drawerOpen = false
-        } catch (e: Exception) {
-            Toast.makeText(this, "Couldn't open ${app.label}", Toast.LENGTH_SHORT).show()
-        }
+    private fun launchApp(app: AppEntry): Boolean = try {
+        repo.launch(app)
+        prefs.recordLaunch(app.key)
+        launchCounts = prefs.launchCounts()
+        drawerOpen = false
+        true
+    } catch (e: Exception) {
+        Toast.makeText(this, "Couldn't open ${app.label}", Toast.LENGTH_SHORT).show()
+        false
     }
 
     private fun toggleDock(app: AppEntry) {

@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">Capri</string>
+    <string name="overlay_label">Capri overlay</string>
+    <string name="overlay_summary">Mini Capri floats over your apps with quick controls.</string>
+    <string name="overlay_description">Lets a mini Capri float over other apps so you can take a screenshot, lock the screen, use the flashlight or open the camera from anywhere. It does not read what is on your screen. It only notices which app is in front, so she can hide on her own home screen. Nothing leaves your phone.</string>
 </resources>
