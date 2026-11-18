@@ -1,6 +1,7 @@
 package io.github.kurtking514_byte.capricorn.overlay
 
 import android.accessibilityservice.AccessibilityService
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.graphics.Color
 import android.graphics.PixelFormat
@@ -15,6 +16,8 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.res.ResourcesCompat
@@ -48,8 +51,8 @@ class CapriOverlayService : AccessibilityService() {
     private var hiddenByUser = false
 
     private fun dp(v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, resources.displayMetrics).toInt()
-    private val miniW get() = dp(74f)
-    private val miniH get() = dp(88f)
+    private val miniW get() = dp(84f)
+    private val miniH get() = dp(96f)
 
     override fun onServiceConnected() {
         instance = this
@@ -151,6 +154,7 @@ class CapriOverlayService : AccessibilityService() {
         view.setOnTouchListener { _, e ->
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
+                    view.bounce(0.8f)
                     downX = e.rawX; downY = e.rawY
                     startX = params.x; startY = params.y
                     dragging = false
@@ -175,8 +179,17 @@ class CapriOverlayService : AccessibilityService() {
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> if (dragging) {
                     // snap to the nearest side edge
                     val mid = params.x + miniW / 2
-                    params.x = if (mid < screen.widthPixels / 2) 0 else screen.widthPixels - miniW
-                    runCatching { wm.updateViewLayout(view, params) }
+                    val target = if (mid < screen.widthPixels / 2) 0 else screen.widthPixels - miniW
+                    ValueAnimator.ofInt(params.x, target).apply {
+                        duration = 320
+                        interpolator = OvershootInterpolator(1.6f)
+                        addUpdateListener {
+                            params.x = it.animatedValue as Int
+                            runCatching { wm.updateViewLayout(view, params) }
+                        }
+                        start()
+                    }
+                    view.bounce(0.6f)
                 }
             }
             if (!dragging) gestures.onTouchEvent(e)
@@ -261,11 +274,33 @@ class CapriOverlayService : AccessibilityService() {
         }
         runCatching { wm.addView(column, params) }
         panel = column
+
+        // Unfold out of her side instead of popping in, buttons following one by one.
+        val onRight = anchor.x + miniW / 2 > screen.widthPixels / 2
+        column.post {
+            column.pivotX = if (onRight) column.width.toFloat() else 0f
+            column.pivotY = column.height / 2f
+        }
+        column.alpha = 0f
+        column.scaleX = 0.6f
+        column.scaleY = 0.85f
+        column.animate().alpha(1f).scaleX(1f).scaleY(1f)
+            .setDuration(240).setInterpolator(OvershootInterpolator(1.4f)).start()
+        for (i in 0 until column.childCount) {
+            val child = column.getChildAt(i)
+            child.alpha = 0f
+            child.translationX = if (onRight) dp(24f).toFloat() else -dp(24f).toFloat()
+            child.animate().alpha(1f).translationX(0f)
+                .setStartDelay(60L + i * 35L).setDuration(220)
+                .setInterpolator(DecelerateInterpolator(2f)).start()
+        }
     }
 
     private fun closePanel() {
-        panel?.let { runCatching { wm.removeView(it) } }
+        val closing = panel ?: return
         panel = null
+        closing.animate().alpha(0f).scaleX(0.7f).scaleY(0.9f).setDuration(140)
+            .withEndAction { runCatching { wm.removeView(closing) } }.start()
     }
 
     companion object {

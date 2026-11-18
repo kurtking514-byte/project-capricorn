@@ -144,15 +144,20 @@ A fan-made Android home-screen launcher built around **Capri (Project Capricorn)
 - **2026-11-13:** Big home redesign after user feedback: her small full body stands on the home screen with ~9 fps jitter (`ui/CapriBody.kt`), flat colors only (no gradients/glow), speech panel where she talks, chatbox that runs commands (`capri/CapriBrain.kt`: open apps, alarm, timer, camera, apps, help), new boot (slash → hair burst → blink), new app icon (her face on shard hair). Swipe-up app list kept as a fallback. Builds cleanly; not yet checked on the phone.
 - **2026-11-13:** Adopted the CapriCore look (user supplied its zip): ink/cyan/crimson/acid palette, Exo 2 font, "INCOMING TRANSMISSION" panel, framed viewport with corner brackets and status tag. Added the sprite skin system (`ui/CapriSprite.kt`): frames in `app/src/debug/assets/skin/` (git-ignored) replace the code drawing, with mood poses, blink, talking mouth, jitter, and a 7-frame sprite boot. The user's local skin is CapriCore's sprites, downscaled; they are NOT in the repo because CapriCore's notice grants no redistribution rights to the character art. Builds cleanly; not yet checked on the phone.
 - **2026-11-13:** Mini Capri overlay (`overlay/CapriOverlayService.kt`), built as an accessibility service so it needs one switch and no notification: 74x88dp sprite with jitter and blink floats over other apps, hides on her own home screen. Tap = quick controls panel (screenshot, flashlight, camera, lock, talk to Capri, hide), double-tap = screenshot, long-press = home, drag = move and snap to edge. Chat commands added: overlay, screenshot, lock, flashlight. It does not read screen content (`canRetrieveWindowContent=false`). Builds cleanly; not yet checked on the phone.
+- **2026-11-14:** Smooth motion pass (user found the 9 fps jitter and instant pose swaps too stop-motion). Sprites are now drawn on a warped mesh (`ui/CapriMesh.kt`): sway, breathing, hair ripple, lean with the phone's tilt sensor, spring squash/stretch on tap, crossfades between poses, shard burst on each new line, staggered home entrance, speech panel pop. Boot plays the intro frames as one blended move with a camera ease-in and a landing bounce. Mini overlay uses the same mesh at ~30 fps, with a spring on touch, animated edge snap and an unfolding quick panel. Builds cleanly; not yet checked on the phone.
+- **2026-11-14:** Home and boot redone after more feedback. Boot: ~1.1 s, she streaks across the screen twice in crimson flashes with speed streaks and trails, then snaps out from a face close-up to her spot (the bounce boot was a misread of "like a ball bouncing" and is gone). Home: the viewport box and status tag are removed, she stands free; her speech bubble floats right above her head and follows her down when she sits or lies down; left alone she picks random activities (lying down, sitting, crouching, looking around); every new line gives a quick crimson screen flash; the clock is a cyberpunk HUD (slanted time with crimson/cyan split, acid day tag, 24-segment day bar). Local skin is now 33 full-canvas 627px frames plus `meta.json` (head positions). Builds cleanly; not yet checked on the phone.
 
 ## Design rules (from user feedback)
 
 - Her small **full body** on the home screen, never face/eyes only.
-- **Jittery** cut-out motion like the show.
+- **Smooth, fluid motion** with depth (2.5D motion-graphics feel). No stop-motion jitter, no instant snaps: everything eases, blends or springs.
 - **Flat colors only.** No gradients, no glow.
 - The **chatbox** is the main way to do things, and Capri **talks back** in character.
 - A **mini Capri overlay** must stay available over other apps for quick controls, small like in the CapriCore trailer.
-- Boot must be smooth and cool, with no text.
+- Boot must be quick (about a second), smooth and cool, with no text: Capri zooming around the screen with red flashes, like her entrances in the show. Not a bounce.
+- **No box around Capri.** She stands free on the home screen and does random things when idle (sits, lies down, looks around).
+- **Her speech bubble sits directly above her head** and moves with her.
+- Clock and date are styled as a cyberpunk HUD, not plain text.
 
 ## Capri's look (from the reference video)
 

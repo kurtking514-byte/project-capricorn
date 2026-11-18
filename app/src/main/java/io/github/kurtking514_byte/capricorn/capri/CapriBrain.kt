@@ -67,6 +67,11 @@ class CapriBrain(private val context: Context) {
         val t = text.lowercase(Locale.ROOT)
         if (t.isEmpty()) return pick("Use your words.", "I'm good, but I'm not a mind reader. Yet.")
 
+        // show every pose once, 2 s each (handled by CapriSpriteFigure)
+        if (t == "poses" || t == "pose" || t == "show poses") {
+            return done(pick("Fine. Full catalogue. Don't blink.", "Runway mode. Try to keep up."), "showcase")
+        }
+
         // alarms
         if (Regex("\\b(alarm|wake)\\b").containsMatchIn(t)) {
             val m = Regex("(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?").find(t)

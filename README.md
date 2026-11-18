@@ -11,7 +11,7 @@ Capri is an Android launcher built around Capri (Project Capricorn). She project
 
 What works now:
 - Set Capri as your home app
-- Capri stands on your home screen in her jittery cut-out style, blinks, and reacts when you poke her
+- Capri stands on your home screen and moves smoothly: she sways, breathes, her hair ripples, she leans as you tilt the phone, and bounces when you poke her
 - She talks: her lines type out in a speech panel, and her mouth moves while she speaks
 - Chatbox ("what do you want to do?"): type an app name to open it, or `alarm 7:30`, `timer 10 min`, `photo`, `apps`, `help`
 - App suggestions appear as you type

@@ -4,66 +4,64 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.RectF
 import android.os.PowerManager
+import android.os.SystemClock
 import android.view.View
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.core.content.ContextCompat
 import io.github.kurtking514_byte.capricorn.R
+import io.github.kurtking514_byte.capricorn.ui.CapriMesh
 import io.github.kurtking514_byte.capricorn.ui.CapriSkin
+import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.random.Random
 
 /**
- * Mini Capri for the floating overlay: a small plain View (no Compose, to stay light)
- * that draws one sprite frame with her jitter, blinks, and can flash a happy pose.
+ * Mini Capri for the floating overlay: a small plain View (no Compose, to stay light).
+ * She moves smoothly with the same mesh warp as the home screen: sways, breathes, her
+ * hair ripples, she blinks, and she bounces like a spring when touched.
+ * Drawn at about 30 fps to go easy on the battery; paused while the screen is off.
  * Without a sprite skin it falls back to the app icon.
  */
 class MiniCapriView(context: Context, skin: CapriSkin?) : View(context) {
 
-    private val neutral: Bitmap? = skin?.frame("neutral")?.asAndroidBitmap()
-    private val blinkHalf: Bitmap? = skin?.frame("idle_blink_half")?.asAndroidBitmap()
-    private val blinkClosed: Bitmap? = skin?.frame("idle_blink_closed")?.asAndroidBitmap()
-    private val happy: Bitmap? = skin?.frame("idle_happy")?.asAndroidBitmap()
+    private val neutral: Bitmap? = skin?.bitmap("neutral")
+    private val blinkHalf: Bitmap? = skin?.bitmap("idle_blink_half")
+    private val blinkClosed: Bitmap? = skin?.bitmap("idle_blink_closed")
+    private val happy: Bitmap? = skin?.bitmap("idle_smirk")
     private val fallback = if (neutral == null) ContextCompat.getDrawable(context, R.mipmap.ic_launcher) else null
 
-    private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
-    private val dst = RectF()
+    private val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+    private val verts = CapriMesh.newVerts()
     private val power = context.getSystemService(PowerManager::class.java)
+    private val born = SystemClock.uptimeMillis()
 
-    private var jx = 0f
-    private var jy = 0f
-    private var jr = 0f
-    private var blinkStep = 0
-    private var nextBlinkAt = System.currentTimeMillis() + 3000
+    private var blinkAt = born + 3000        // when the current/next blink starts
     private var happyUntil = 0L
+    private var bounceAt = 0L                // when she was last poked
+    private var bounceSize = 0f
 
     private val tick = object : Runnable {
         override fun run() {
-            // Don't animate while the screen is off or she's hidden.
             if (!power.isInteractive || !isShown) {
-                postDelayed(this, 1500)
+                postDelayed(this, 1200)
                 return
             }
-            val now = System.currentTimeMillis()
-            val amp = height * 0.006f
-            jx = (Random.nextFloat() * 2 - 1) * amp
-            jy = (Random.nextFloat() * 2 - 1) * amp
-            jr = (Random.nextFloat() * 2 - 1) * 0.6f
-            if (blinkStep > 0) {
-                blinkStep = (blinkStep + 1) % 4
-            } else if (now >= nextBlinkAt) {
-                blinkStep = 1
-                nextBlinkAt = now + Random.nextLong(2200, 5500)
-            }
             invalidate()
-            postDelayed(this, 110)
+            postDelayed(this, 33)
         }
+    }
+
+    /** Spring bounce: positive squashes her first, then she wobbles back. */
+    fun bounce(strength: Float = 1f) {
+        bounceAt = SystemClock.uptimeMillis()
+        bounceSize = strength
+        invalidate()
     }
 
     /** Briefly switch to her happy pose (after she does something for you). */
     fun cheer() {
-        happyUntil = System.currentTimeMillis() + 1400
-        invalidate()
+        happyUntil = SystemClock.uptimeMillis() + 1400
+        bounce(0.7f)
     }
 
     override fun onAttachedToWindow() {
@@ -77,25 +75,33 @@ class MiniCapriView(context: Context, skin: CapriSkin?) : View(context) {
     }
 
     override fun onDraw(canvas: Canvas) {
+        val now = SystemClock.uptimeMillis()
+        val t = (now - born) / 1000f
+
+        // blink: half → closed → half over about a quarter second
+        val sinceBlink = now - blinkAt
+        if (sinceBlink > 260) blinkAt = now + Random.nextLong(2200, 5500)
         val frame = when {
-            System.currentTimeMillis() < happyUntil -> happy ?: neutral
-            blinkStep == 2 -> blinkClosed ?: neutral
-            blinkStep == 1 || blinkStep == 3 -> blinkHalf ?: neutral
+            now < happyUntil -> happy ?: neutral
+            sinceBlink in 70..180 -> blinkClosed ?: neutral
+            sinceBlink in 0..260 -> blinkHalf ?: neutral
             else -> neutral
         }
-        canvas.save()
-        canvas.rotate(jr, width / 2f, height.toFloat())
-        canvas.translate(jx, jy)
+
+        // damped spring, so a tap makes her squash, stretch and settle
+        val age = (now - bounceAt) / 1000f
+        val spring = if (age < 1.6f) bounceSize * exp(-4.5f * age) * cos(17f * age) else 0f
+
         if (frame != null) {
-            val scale = minOf(width.toFloat() / frame.width, height.toFloat() / frame.height)
-            val w = frame.width * scale
-            val h = frame.height * scale
-            dst.set((width - w) / 2f, height - h, (width + w) / 2f, height.toFloat())
-            canvas.drawBitmap(frame, null, dst, paint)
+            // leave a little room around her for the sway
+            val fit = minOf(width / (0.80f * frame.width), height / (0.90f * frame.height))
+            val w = frame.width * fit
+            val h = frame.height * fit
+            CapriMesh.fill(verts, (width - w) / 2f, height - 0.93f * h, w, h, t, 0f, 0f, spring)
+            canvas.drawBitmapMesh(frame, CapriMesh.COLS, CapriMesh.ROWS, verts, 0, null, 0, paint)
         } else {
             fallback?.setBounds(0, height - width, width, height)
             fallback?.draw(canvas)
         }
-        canvas.restore()
     }
 }

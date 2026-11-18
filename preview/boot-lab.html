@@ -1,0 +1,325 @@
+<title>Capri Boot Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* Layout: one phone in the middle, controls and the flash timeline under it. Single dark look, app palette. */
+  :root {
+    color-scheme: dark;
+    --ink: #080E15;
+    --panel: #0C1A22;
+    --crimson: #FF3C68;
+    --cyan: #8EF5ED;
+    --acid: #F4ED75;
+    --text: #E6F4F4;
+    --dim: #7E949C;
+    --line: #1B2E38;
+    --display: "Exo 2", "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--ink);
+    color: var(--text);
+    font-family: var(--display);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 28px;
+    box-sizing: border-box;
+  }
+  .wrap { max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font-weight: 800; font-size: 20px; letter-spacing: .02em; text-transform: uppercase; }
+  h1 span { color: var(--crimson); }
+  .step { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--acid); }
+
+  .phone {
+    position: relative; width: 100%; max-width: 100%; aspect-ratio: 9 / 19.5;
+    background: #000; border: 2px solid var(--line);
+    clip-path: polygon(0 14px, 14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px));
+  }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .rest {
+    position: absolute; left: 0; right: 0; bottom: 18%; text-align: center;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim);
+  }
+
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    font: 600 13px/1 var(--display); letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text); background: var(--panel); border: 1px solid var(--line);
+    padding: 11px 14px; cursor: pointer;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  button.primary { background: var(--crimson); color: var(--ink); border-color: var(--crimson); }
+  button[aria-pressed="true"] { border-color: var(--cyan); color: var(--cyan); }
+  button:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
+
+  .timeline { background: var(--panel); border: 1px solid var(--line); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .tl-label { font-family: var(--mono); font-size: 11px; color: var(--dim); letter-spacing: .08em; text-transform: uppercase; display: flex; justify-content: space-between; }
+  .track { position: relative; height: 22px; background: #000; }
+  .mark { position: absolute; top: 0; bottom: 0; background: var(--crimson); min-width: 2px; }
+  .mark.arrive { background: var(--cyan); opacity: .35; }
+  li.arrive { color: var(--cyan); }
+  .head { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--cyan); }
+  ol { margin: 0; padding-left: 18px; font-family: var(--mono); font-size: 12px; color: var(--text); font-variant-numeric: tabular-nums; display: grid; gap: 2px; }
+  ol li::marker { color: var(--dim); }
+  .note { font-size: 13px; color: var(--dim); line-height: 1.5; margin: 0; }
+  .note b { color: var(--text); font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Capri <span>boot</span></h1>
+    <div class="step">Step B2 · hand forward</div>
+  </header>
+
+  <div class="phone" id="phone">
+    <canvas id="c"></canvas>
+    <div class="rest" id="rest" hidden>Lightning to the dock comes next (B3)</div>
+  </div>
+
+  <div class="controls">
+    <button class="primary" id="replay">Replay</button>
+    <button id="slow" aria-pressed="false">Slow ×4</button>
+    <button id="loop" aria-pressed="true">Loop</button>
+  </div>
+
+  <div class="timeline">
+    <div class="tl-label"><span>This run</span><span id="total">0 ms</span></div>
+    <div class="track" id="track"><div class="head" id="head"></div></div>
+    <ol id="list"></ol>
+  </div>
+
+  <p class="note">Every replay is a new random pattern: <b>3–5 hard crimson hits</b> at uneven times, each a different shape (full screen, slash, band, half screen). Somewhere in the middle she <b>glitches through</b> for a split second: torn into slices with a crimson split, then gone. After the last hit she <b>glitches in</b> and <b>brings her hand toward you</b>: it rises from her hip, grows as it comes closer, she leans in a little, and a crimson split marks the moment it lands. Flat color, no glow, no confetti, no body zooming. The figure is a plain stand-in; the app uses your skin.</p>
+</div>
+
+<script>
+(() => {
+  const CRIMSON = "#FF3C68", INK = "#000";
+  const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+  const phone = document.getElementById("phone"), rest = document.getElementById("rest");
+  const track = document.getElementById("track"), head = document.getElementById("head");
+  const list = document.getElementById("list"), total = document.getElementById("total");
+  const slowBtn = document.getElementById("slow"), loopBtn = document.getElementById("loop");
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  let W = 0, H = 0, seq = null, t0 = 0, slow = false, loop = !reduced, raf = 0, nextTimer = 0;
+  loopBtn.setAttribute("aria-pressed", String(loop));
+
+  function resize() {
+    const r = phone.getBoundingClientRect(), d = Math.min(devicePixelRatio || 1, 2);
+    W = r.width; H = r.height;
+    cv.width = Math.round(W * d); cv.height = Math.round(H * d);
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    buildFigures(d);
+  }
+
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const SHAPES = ["full", "slash", "band", "half"];
+  // B2: after the last flash she glitches in (ms), then brings her hand toward the screen (ms).
+  const ARRIVE_GLITCH = 170, ARRIVE_REACH = 620;
+  const easeOut = x => 1 - Math.pow(1 - x, 3);
+  const easeOutBack = x => 1 + 2.70158 * Math.pow(x - 1, 3) + 1.70158 * Math.pow(x - 1, 2);
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const BODY = "#16262F", EDGE = "#8EF5ED";
+
+  // Stand-in with arms, drawn live. k = 0..1 through the reach.
+  function drawReach(k) {
+    const u = H * .5, top = H * .42, cx = W / 2, feetY = top + u * .98;
+    const e = easeOutBack(k), s = 1 + .08 * easeOut(k);
+    ctx.save();
+    ctx.translate(cx, feetY); ctx.scale(s, s); ctx.rotate(-.035 * easeOut(k)); ctx.translate(-cx, -feetY);
+    const lw = 2 / s;
+    figurePath(ctx, W, H); ctx.fillStyle = BODY; ctx.fill(); ctx.lineWidth = lw; ctx.strokeStyle = EDGE; ctx.stroke();
+
+    // arms: outline stroke first, body-colored stroke on top
+    const limb = (x1, y1, x2, y2, w) => {
+      ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+      ctx.strokeStyle = EDGE; ctx.lineWidth = w + lw * 2; ctx.stroke();
+      ctx.strokeStyle = BODY; ctx.lineWidth = w; ctx.stroke();
+    };
+    const sy = top + u * .21;
+    limb(cx - u * .11, sy, cx - u * .14, top + u * .5, u * .03);                 // left arm hangs
+
+    // right hand travels from her hip to in front of her chest and grows (coming toward you)
+    const hx = lerp(cx + u * .14, cx + u * .04, e), hy = lerp(top + u * .5, top + u * .33, e);
+    const r = lerp(u * .02, u * .11, Math.max(0, e));
+    limb(cx + u * .11, sy, hx, hy, lerp(u * .03, u * .07, Math.max(0, e)));
+
+    const hand = new Path2D();
+    hand.roundRect(hx - r * .8, hy - r * .55, r * 1.6, r * 1.3, r * .2);          // palm
+    for (let i = 0; i < 4; i++) {                                                  // fingers, spread a little
+      const fx = hx - r * .72 + i * r * .48, spread = (i - 1.5) * .08 * e;
+      const f = new Path2D(); const m = new DOMMatrix().translate(fx + r * .14, hy - r * .5).rotate(spread * 57.3);
+      f.roundRect(-r * .14, -r * (.85 - Math.abs(i - 1.5) * .12), r * .28, r * (.9 - Math.abs(i - 1.5) * .12), r * .12);
+      hand.addPath(f, m);
+    }
+    const th = new Path2D(); th.roundRect(-r * .15, -r * .6, r * .3, r * .65, r * .14);
+    hand.addPath(th, new DOMMatrix().translate(hx - r * .78, hy + r * .2).rotate(-55));  // thumb
+
+    if (k > .8 && k < .9) { ctx.save(); ctx.translate(7 / s, 0); ctx.fillStyle = CRIMSON; ctx.fill(hand); ctx.restore(); }
+    ctx.lineWidth = lw * 2; ctx.strokeStyle = EDGE; ctx.stroke(hand);
+    ctx.fillStyle = BODY; ctx.fill(hand);
+    ctx.restore();
+  }
+
+  function drawArrival(ms) {
+    if (ms < ARRIVE_GLITCH) {
+      // glitching in: fewer missing slices as it goes, then solid
+      const p = seq.arrive, k = ms / ARRIVE_GLITCH;
+      drawHit({ shape: "glitch", p: { ...p, a: p.a.map(s => ({ ...s, gone: s.gone || Math.random() > k + .2 })) } }, k);
+      return;
+    }
+    drawReach(Math.min((ms - ARRIVE_GLITCH) / ARRIVE_REACH, 1));
+  }
+
+  const NAMES = { full: "full screen", slash: "slash", band: "band", half: "half screen", glitch: "she glitches through" };
+
+  // Stand-in figure (original placeholder; the app uses the real skin frames), pre-drawn twice:
+  // its normal flat colors, and a solid crimson copy for the split.
+  let fig = null, figRed = null;
+  function figurePath(c, w, h) {
+    const cx = w / 2, top = h * .42, u = h * .5;
+    c.beginPath(); c.ellipse(cx, top + u * .07, u * .055, u * .07, 0, 0, Math.PI * 2);             // head
+    c.moveTo(cx - u * .025, top + u * .13); c.lineTo(cx + u * .025, top + u * .13);              // neck
+    c.lineTo(cx + u * .12, top + u * .2); c.lineTo(cx + u * .085, top + u * .5);                 // shoulders → waist
+    c.lineTo(cx + u * .07, top + u * .98); c.lineTo(cx + u * .02, top + u * .98);                // right leg
+    c.lineTo(cx, top + u * .56); c.lineTo(cx - u * .02, top + u * .98);
+    c.lineTo(cx - u * .07, top + u * .98); c.lineTo(cx - u * .085, top + u * .5);                // left leg
+    c.lineTo(cx - u * .12, top + u * .2); c.closePath();
+  }
+  function buildFigures(d) {
+    const mk = (fill, stroke) => {
+      const c = document.createElement("canvas"); c.width = cv.width; c.height = cv.height;
+      const g = c.getContext("2d"); g.setTransform(d, 0, 0, d, 0, 0);
+      figurePath(g, W, H); g.fillStyle = fill; g.fill();
+      if (stroke) { g.lineWidth = 2; g.strokeStyle = stroke; g.stroke(); }
+      return c;
+    };
+    fig = mk("#16262F", "#8EF5ED"); figRed = mk(CRIMSON, null);
+  }
+
+  // One run: 3–5 hits, uneven gaps (some come as a quick double), each 30–90 ms,
+  // plus one moment where she glitches through the screen (90–170 ms).
+  function makeSeq() {
+    const n = 3 + Math.floor(Math.random() * 3);
+    const glitchAt = 1 + Math.floor(Math.random() * (n - 1));
+    const hits = []; let t = rnd(60, 160); let last = null;
+    for (let i = 0; i < n; i++) {
+      let shape;
+      if (i === glitchAt) shape = "glitch";
+      else do { shape = pick(SHAPES); } while (shape === last);
+      last = shape;
+      const dur = shape === "glitch" ? rnd(90, 170) : rnd(30, 90);
+      hits.push({ t, dur, shape, p: params(shape) });
+      t += dur + (Math.random() < 0.35 ? rnd(25, 60) : rnd(90, 240));
+    }
+    // first or last hit is always a full-screen one so the moment reads as one big flash
+    if (!hits.some(h => h.shape === "full")) { const h = hits[Math.random() < .5 ? 0 : n - 1]; h.shape = "full"; h.p = params("full"); }
+    const flashEnd = t + 120;
+    return { hits, flashEnd, arrive: params("glitch"), end: flashEnd + ARRIVE_GLITCH + ARRIVE_REACH + 60 };
+  }
+
+  function params(shape) {
+    switch (shape) {
+      case "full":    return { cut: Math.random() < .5, cutY: rnd(.2, .8), cutH: rnd(.01, .03), cutA: rnd(-.25, .25) };
+      case "slash":   return { a: rnd(-.9, .9) + (Math.random() < .5 ? 0 : Math.PI), y: rnd(.25, .75), w: rnd(.08, .22) };
+      case "band":    return { y: rnd(.05, .8), h: rnd(.06, .28), x: rnd(-.1, .15), dx: rnd(-.05, .05) };
+      case "half":    return { side: pick(["top", "bottom", "left", "right"]), f: rnd(.35, .6) };
+      case "glitch": {
+        // two sets of horizontal slices, swapped halfway through so she tears twice
+        const slices = () => { const s = []; let y = .38; while (y < .95) { const h = rnd(.008, .05); s.push({ y, h, dx: Math.random() < .55 ? 0 : rnd(-.18, .18), red: Math.random() < .3, gone: Math.random() < .12 }); y += h; } return s; };
+        return { a: slices(), b: slices(), split: rnd(4, 9) * (Math.random() < .5 ? -1 : 1) };
+      }
+    }
+  }
+
+  function drawHit(h, k) {
+    const p = h.p; ctx.fillStyle = CRIMSON;
+    if (h.shape === "full") {
+      ctx.fillRect(0, 0, W, H);
+      if (p.cut) { // a black tear through the flash
+        ctx.save(); ctx.translate(W / 2, H * p.cutY); ctx.rotate(p.cutA);
+        ctx.fillStyle = INK; ctx.fillRect(-W, -H * p.cutH / 2, W * 2, H * p.cutH); ctx.restore();
+      }
+    } else if (h.shape === "slash") {
+      ctx.save(); ctx.translate(W / 2, H * p.y); ctx.rotate(p.a);
+      const bw = H * p.w, len = Math.hypot(W, H) * 1.2;
+      // parallelogram with a sharp tip, sliding a little during the hit
+      const s = (k - .5) * W * .15;
+      ctx.beginPath(); ctx.moveTo(-len / 2 + s, -bw / 2); ctx.lineTo(len / 2 + s, -bw / 2 + bw * .25);
+      ctx.lineTo(len / 2 + s, bw / 2 - bw * .35); ctx.lineTo(-len / 2 + s, bw / 2); ctx.closePath(); ctx.fill(); ctx.restore();
+    } else if (h.shape === "band") {
+      ctx.fillRect(W * (p.x + p.dx * k), H * p.y, W * 1.1, H * p.h);
+    } else if (h.shape === "half") {
+      const f = p.f;
+      if (p.side === "top") ctx.fillRect(0, 0, W, H * f);
+      if (p.side === "bottom") ctx.fillRect(0, H * (1 - f), W, H * f);
+      if (p.side === "left") ctx.fillRect(0, 0, W * f, H);
+      if (p.side === "right") ctx.fillRect(W * (1 - f), 0, W * f, H);
+    } else if (h.shape === "glitch") {
+      const d = cv.width / W;
+      for (const s of (k < .5 ? p.a : p.b)) {
+        if (s.gone) continue;
+        const sy = s.y * H, sh = s.h * H, dx = s.dx * W;
+        // crimson copy offset to one side, the figure slice on top (or only crimson for some slices)
+        ctx.drawImage(figRed, 0, sy * d, cv.width, sh * d, dx + p.split, sy, W, sh);
+        if (!s.red) ctx.drawImage(fig, 0, sy * d, cv.width, sh * d, dx, sy, W, sh);
+      }
+    }
+  }
+
+  function renderTimeline() {
+    track.querySelectorAll(".mark").forEach(m => m.remove());
+    list.innerHTML = "";
+    for (const h of seq.hits) {
+      const m = document.createElement("div"); m.className = "mark";
+      m.style.left = (h.t / seq.end * 100) + "%"; m.style.width = (h.dur / seq.end * 100) + "%";
+      track.insertBefore(m, head);
+      const li = document.createElement("li");
+      li.textContent = `${String(Math.round(h.t)).padStart(4, " ")} ms  ${NAMES[h.shape]} · ${Math.round(h.dur)} ms`;
+      list.appendChild(li);
+    }
+    const a = document.createElement("div"); a.className = "mark arrive";
+    a.style.left = (seq.flashEnd / seq.end * 100) + "%"; a.style.right = "0";
+    track.insertBefore(a, head);
+    for (const [at, txt] of [[seq.flashEnd, `she glitches in · ${ARRIVE_GLITCH} ms`], [seq.flashEnd + ARRIVE_GLITCH, `hand comes toward you · ${ARRIVE_REACH} ms`]]) {
+      const li = document.createElement("li"); li.className = "arrive";
+      li.textContent = `${String(Math.round(at)).padStart(4, " ")} ms  ${txt}`; list.appendChild(li);
+    }
+    total.textContent = Math.round(seq.end) + " ms";
+  }
+
+  function frame(now) {
+    const speed = slow ? .25 : 1;
+    const t = (now - t0) * speed;
+    ctx.fillStyle = INK; ctx.fillRect(0, 0, W, H);
+    for (const h of seq.hits) if (t >= h.t && t < h.t + h.dur) drawHit(h, (t - h.t) / h.dur);
+    if (t >= seq.flashEnd) drawArrival(t - seq.flashEnd);
+    head.style.left = Math.min(t / seq.end, 1) * 100 + "%";
+    if (t < seq.end) { raf = requestAnimationFrame(frame); return; }
+    rest.hidden = false;
+    if (loop) nextTimer = setTimeout(play, 1800);
+  }
+
+  function play() {
+    cancelAnimationFrame(raf); clearTimeout(nextTimer);
+    rest.hidden = true; seq = makeSeq(); renderTimeline();
+    if (reduced && !loop) { // show one still hit instead of strobing
+      ctx.fillStyle = INK; ctx.fillRect(0, 0, W, H); drawReach(1); rest.hidden = false; return;
+    }
+    t0 = performance.now(); raf = requestAnimationFrame(frame);
+  }
+
+  document.getElementById("replay").addEventListener("click", play);
+  slowBtn.addEventListener("click", () => { slow = !slow; slowBtn.setAttribute("aria-pressed", String(slow)); play(); });
+  loopBtn.addEventListener("click", () => { loop = !loop; loopBtn.setAttribute("aria-pressed", String(loop)); if (loop) play(); });
+  new ResizeObserver(() => { resize(); if (seq && rest.hidden === false) { ctx.fillStyle = INK; ctx.fillRect(0, 0, W, H); } }).observe(phone);
+
+  resize(); play();
+})();
+</script>
