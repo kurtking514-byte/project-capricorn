@@ -1,0 +1,261 @@
+<title>Capri List Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Chakra+Petch:wght@500;700&family=Silkscreen:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --ink: #07070B; --panel: #12121A; --line: #2A2433; --text: #ECE9F2; --dim: #8C8698;
+    --green: #00B144; --crimson: #BC002B; --suit: #BB003D; --purple: #37197B; --pink: #FF3C68;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+    --disp: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
+  }
+  body { background: var(--ink); color: var(--text); font-family: var(--mono); }
+  .wrap { max-width: 980px; margin: 0 auto; padding-block: 20px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+  @media (max-width: 760px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+  header { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font: 700 22px/1 var(--disp); letter-spacing: .04em; text-transform: uppercase; }
+  h1 span { color: var(--crimson); }
+  .step { font-size: 11px; letter-spacing: .14em; color: var(--dim); text-transform: uppercase; }
+
+  /* ---------- phone ---------- */
+  .phone { position: relative; width: 100%; max-width: 360px; aspect-ratio: 9 / 18; background: #000; border: 1px solid var(--line); overflow: hidden; margin: 0 auto; }
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .scroll { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+  .disp { font-family: var(--disp); }
+
+  /* 1. face panel */
+  .v-face { background: #000; padding: 14px 10px 0; }
+  .face { position: relative; flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .face::before { content: ""; position: absolute; inset: 0; transform: translate(4px, 4px); background: var(--purple);
+    clip-path: polygon(0 18px, 18px 0, 100% 0, 100% calc(100% - 28px), calc(100% - 28px) 100%, 0 100%); }
+  .face-in { position: relative; flex: 1; min-height: 0; background: var(--green); display: flex; flex-direction: column; padding: 14px 10px 0;
+    clip-path: polygon(0 18px, 18px 0, 100% 0, 100% calc(100% - 28px), calc(100% - 28px) 100%, 0 100%); }
+  .face .search { background: #000; color: var(--green); font: 600 13px/1 var(--disp); letter-spacing: .08em; padding: 11px 14px; text-transform: uppercase;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
+  .face .sec { font: 900 26px/1 var(--disp); color: #000; padding: 14px 4px 4px; letter-spacing: .02em; }
+  .face .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 4px; }
+  .face .app { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 4px 0; cursor: pointer; }
+  .almond { width: 58px; height: 34px; background: #000; display: grid; place-items: center; color: var(--c); font: 700 17px/1 var(--disp);
+    clip-path: path("M0 17 C 12 -2, 46 -2, 58 17 C 46 36, 12 36, 0 17 Z"); }
+  .face .app span { font: 600 11px/1.1 var(--disp); color: #000; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; letter-spacing: .03em; }
+  .face .app.on .almond { background: var(--green); color: #000; outline: 2px solid #000; outline-offset: -2px; }
+
+  /* 2. suit bands */
+  .v-bands { background: #000; }
+  .bands-top { padding: 14px 12px 8px; }
+  .bands-top .search { border: 1.5px solid var(--suit); color: var(--dim); font: 600 13px/1 var(--disp); letter-spacing: .08em; padding: 11px 14px; text-transform: uppercase;
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); }
+  .band { position: relative; margin: 14px 0 8px -6px; height: 30px; width: 72%; background: var(--suit); display: flex; align-items: center; gap: 10px; padding-left: 18px;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%); }
+  .band b { font: 900 22px/1 var(--disp); color: #000; letter-spacing: .04em; }
+  .band i { width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 10px solid var(--green); }
+  .bands .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 4px; padding: 0 8px; }
+  .bands .app { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px 0; cursor: pointer; }
+  .tile { width: 46px; height: 46px; background: #000; border: 1.5px solid var(--c); display: grid; place-items: center; color: var(--c); font: 700 18px/1 var(--disp);
+    clip-path: polygon(0 0, 100% 0, 100% 70%, 70% 100%, 0 100%); position: relative; }
+  .tile::after { content: ""; position: absolute; right: 0; bottom: 0; width: 14px; height: 14px; background: var(--suit); clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+  .bands .app span { font: 500 11px/1.1 var(--disp); color: var(--text); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .03em; }
+  .bands .app.on .tile { background: var(--suit); color: #000; border-color: var(--suit); }
+
+  /* 3. hair fan */
+  .v-fan { background: #000; touch-action: none; cursor: grab; }
+  .v-fan svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .fan-hint { position: absolute; left: 0; right: 0; top: 14px; text-align: center; font: 600 12px/1 var(--disp); letter-spacing: .14em; color: var(--dim); text-transform: uppercase; pointer-events: none; }
+  .fan-letter { position: absolute; left: 0; right: 0; bottom: 5%; text-align: center; font: 900 30px/1 var(--disp); color: var(--crimson); pointer-events: none; }
+
+  /* 4. takeover text list */
+  .v-text { background: var(--crimson); }
+  .v-text .sparkle { position: absolute; inset: 0; pointer-events: none; }
+  .v-text .scroll { position: relative; padding: 16px 0 24px; }
+  .text-top { position: relative; font: 600 12px/1 var(--mono); letter-spacing: .14em; color: #000; padding: 0 18px 10px; text-transform: uppercase; display: flex; justify-content: space-between; }
+  .tl-sec { font: 700 12px/1 var(--mono); color: #fff; letter-spacing: .2em; padding: 14px 18px 4px; }
+  .tl { display: flex; align-items: baseline; gap: 10px; padding: 3px 18px; font: 900 34px/1.02 var(--disp); color: #000; text-transform: uppercase; cursor: pointer; letter-spacing: .01em; }
+  .tl small { font: 600 10px/1 var(--mono); color: rgba(0,0,0,.55); letter-spacing: .1em; }
+  .tl.on { background: #000; color: var(--crimson); }
+  .tl.on small { color: var(--green); }
+
+  /* ---------- controls ---------- */
+  .side { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row-label { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); width: 100%; }
+  button { font: 600 13px/1 var(--disp); letter-spacing: .06em; text-transform: uppercase; color: var(--text); background: var(--panel); border: 1px solid var(--line); padding: 11px 14px; cursor: pointer;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
+  button[aria-pressed="true"] { border-color: var(--green); color: var(--green); }
+  button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+  .card { background: var(--panel); border: 1px solid var(--line); padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .card h2 { margin: 0; font: 700 18px/1.1 var(--disp); letter-spacing: .04em; text-transform: uppercase; color: var(--green); }
+  .card p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--text); }
+  .card .pc { font-size: 12px; color: var(--dim); line-height: 1.5; }
+  .note { font-size: 12px; color: var(--dim); line-height: 1.5; margin: 0; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Capri <span>app list looks</span></h1>
+    <div class="step">Step 3.8b · pick a look</div>
+  </header>
+
+  <div class="phone" id="phone"></div>
+
+  <div class="side">
+    <div class="row" role="group" aria-label="Look">
+      <span class="row-label">Look</span>
+      <button data-v="face" aria-pressed="true">1 · Her face panel</button>
+      <button data-v="bands" aria-pressed="false">2 · Suit bands</button>
+      <button data-v="fan" aria-pressed="false">3 · Hair fan</button>
+      <button data-v="text" aria-pressed="false">4 · Takeover text</button>
+    </div>
+    <div class="row" role="group" aria-label="Font">
+      <span class="row-label">Font</span>
+      <button data-f="heavy" aria-pressed="false" style="font-family:'Big Shoulders Display',sans-serif;font-weight:900">Heavy condensed</button>
+      <button data-f="tech" aria-pressed="true" style="font-family:'Chakra Petch',sans-serif">Techy angular</button>
+      <button data-f="pixel" aria-pressed="false" style="font-family:'Silkscreen',monospace">Pixel</button>
+    </div>
+    <div class="card">
+      <h2 id="d-title"></h2>
+      <p id="d-text"></p>
+      <p class="pc" id="d-pc"></p>
+    </div>
+    <p class="note">Tap an app on the phone to see how "touched" looks. Scroll the list on looks 1, 2 and 4; drag sideways on look 3. Colors are her measured ones (green #00B144, crimson #BC002B, suit #BB003D, purple edge #37197B). Original shapes in her style, no show art.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  const NAMES = ["Browser","Calculator","Calendar","Camera","Clock","Contacts","Files","Gallery","Health","Mail","Maps","Messages","Music","News","Notes","Phone","Recorder","Settings","Store","Wallet","Weather"];
+  const FREQUENT = ["Messages","Camera","Music","Maps"];
+  const COLORS = ["#8EF5ED","#F4ED75","#4FC3FF","#39FF88","#FF9F5A","#C9A2FF","#E6F4F4"];
+  const color = n => COLORS[[...n].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
+  const FONTS = {
+    heavy: '"Big Shoulders Display", "Arial Narrow", sans-serif',
+    tech: '"Chakra Petch", "Arial Narrow", system-ui, sans-serif',
+    pixel: '"Silkscreen", ui-monospace, monospace',
+  };
+  const groups = (() => { const g = [["FREQUENT", FREQUENT]]; for (const n of NAMES) { const L = n[0]; const x = g.find(q => q[0] === L); x ? x[1].push(n) : g.push([L, [n]]); } return g; })();
+  const INFO = {
+    face: ["Her face panel", "The whole list lives inside one big flat green panel, the same green as her face. Every app sits in a black almond cutout, like her eyes, and the panel has her thin purple edge line on the lower-right. Touch an app: its almond snaps green.",
+      "Good: unmistakably her, still a normal grid. Watch: lots of green on screen."],
+    bands: ["Suit bands", "A black screen where every letter is a slanted crimson band, like the panels on her suit, with a small green triangle marker. App tiles are black with a crimson corner cut. Touch an app: the tile snaps solid crimson.",
+      "Good: closest to what you have, quickest to get used to. Watch: the least 'wow' of the four."],
+    fan: ["Hair fan", "Apps spread out above her in arcs, like her hair fans out from her head. Drag sideways and the fan turns; the letter at the bottom tells you where you are. Tap an app: it snaps crimson.",
+      "Good: the most show-like and playful. Watch: slower to find one app when you have 80 of them."],
+    text: ["Takeover text", "No icons at all: she takes over the screen in crimson (with the white sparkle dots from the show) and lists your apps as big bold names. Touch one: a black bar snaps behind it.",
+      "Good: fastest to read, very bold. Watch: no app icons, so you go by name only."],
+  };
+  const phone = document.getElementById("phone");
+  let version = "face", font = "tech", fanAngle = 0, touched = null;
+
+  const tap = (el, name) => { el.addEventListener("pointerdown", () => { touched = name; phone.querySelectorAll(".on").forEach(e => e.classList.remove("on")); el.classList.add("on"); }); };
+
+  function renderFace() {
+    let h = `<div class="screen v-face"><div class="face"><div class="face-in"><div class="search">search apps…</div><div class="scroll">`;
+    for (const [t, apps] of groups) {
+      h += `<div class="sec disp">${t}</div><div class="grid">` + apps.map(n => `<div class="app" data-n="${n}"><div class="almond disp" style="--c:${color(n)}">${n[0]}</div><span>${n}</span></div>`).join("") + `</div>`;
+    }
+    return h + `<div style="height:28px"></div></div></div></div></div>`;
+  }
+  function renderBands() {
+    let h = `<div class="screen v-bands"><div class="bands-top"><div class="search">search apps…</div></div><div class="scroll bands">`;
+    for (const [t, apps] of groups) {
+      h += `<div class="band"><i></i><b>${t}</b></div><div class="grid">` + apps.map(n => `<div class="app" data-n="${n}"><div class="tile" style="--c:${color(n)}">${n[0]}</div><span>${n}</span></div>`).join("") + `</div>`;
+    }
+    return h + `<div style="height:24px"></div></div></div>`;
+  }
+  function renderText() {
+    let h = `<div class="screen v-text"><canvas class="sparkle"></canvas><div class="scroll"><div class="text-top"><span>all apps</span><span>${NAMES.length}</span></div>`;
+    for (const [t, apps] of groups) {
+      h += `<div class="tl-sec">${t}</div>` + apps.map(n => `<div class="tl" data-n="${n}">${n}<small>${t === "FREQUENT" ? "OFTEN" : ""}</small></div>`).join("");
+    }
+    return h + `</div></div>`;
+  }
+  function renderFan() {
+    return `<div class="screen v-fan"><svg id="fan"></svg><div class="fan-hint">drag sideways</div><div class="fan-letter" id="fan-letter"></div></div>`;
+  }
+
+  // ---------- fan: 3 arcs of apps over a stand-in head ----------
+  function drawFan() {
+    const svg = phone.querySelector("#fan"); if (!svg) return;
+    const W = phone.clientWidth, H = phone.clientHeight;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    const cx = W / 2, cy = H * .80;
+    const all = NAMES;
+    const radii = [W * .40, W * .62, W * .84];
+    const per = 7, step = 180 / (per - 1);
+    let s = "";
+    // hair wedges behind (flat crimson, fan-shaped)
+    for (let i = 0; i < 9; i++) {
+      const a0 = (-180 + i * 20 + (fanAngle % 20) - 10) * Math.PI / 180, a1 = a0 + 13 * Math.PI / 180, R = W * .98;
+      s += `<path d="M${cx} ${cy} L${cx + R * Math.cos(a0)} ${cy + R * Math.sin(a0)} L${cx + R * Math.cos(a1)} ${cy + R * Math.sin(a1)} Z" fill="#BC002B" opacity=".22"/>`;
+    }
+    // apps
+    let shown = [];
+    all.forEach((n, i) => {
+      const ring = Math.floor(i / per) % 3, k = i % per;
+      const turn = fanAngle * (ring === 1 ? -1 : 1);
+      let deg = -180 + k * step + (turn % (step * per));
+      deg = ((deg + 360 + 180) % (step * per + 1e-9)) - 180;
+      if (deg > 0 || deg < -180) return;
+      const a = deg * Math.PI / 180, r = radii[ring];
+      const x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+      if (y > cy - 20) return;
+      shown.push([deg, n]);
+      const on = touched === n;
+      s += `<g class="fan-app" data-n="${n}" style="cursor:pointer">
+        <polygon points="${x - 22},${y - 22} ${x + 22},${y - 22} ${x + 22},${y + 8} ${x + 8},${y + 22} ${x - 22},${y + 22}" fill="${on ? "#BC002B" : "#000"}" stroke="${on ? "#BC002B" : color(n)}" stroke-width="1.5"/>
+        <text x="${x}" y="${y + 6}" text-anchor="middle" font-family='${FONTS[font]}' font-weight="700" font-size="17" fill="${on ? "#000" : color(n)}">${n[0]}</text>
+        <text x="${x}" y="${y + 36}" text-anchor="middle" font-family='${FONTS[font]}' font-weight="600" font-size="10" fill="#ECE9F2">${n.toUpperCase()}</text></g>`;
+    });
+    // stand-in head: green panel + two almond cutouts (original simple shape)
+    const pw = W * .34, ph = pw * .55, px = cx - pw / 2, py = cy - ph * .2;
+    s += `<rect x="${px + 3}" y="${py + 3}" width="${pw}" height="${ph}" fill="#37197B"/><rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="#00B144"/>`;
+    for (const ex of [-.22, .22]) {
+      const ex0 = cx + ex * pw, ey = py + ph * .5, w = pw * .2, hh = ph * .2;
+      s += `<path d="M${ex0 - w} ${ey} C ${ex0 - w * .6} ${ey - hh * 1.6}, ${ex0 + w * .6} ${ey - hh * 1.6}, ${ex0 + w} ${ey} C ${ex0 + w * .6} ${ey + hh * 1.6}, ${ex0 - w * .6} ${ey + hh * 1.6}, ${ex0 - w} ${ey} Z" fill="#000"/>`;
+    }
+    svg.innerHTML = s;
+    shown.sort((a, b) => Math.abs(a[0] + 90) - Math.abs(b[0] + 90));
+    phone.querySelector("#fan-letter").textContent = shown.length ? shown[0][1][0] : "";
+    svg.querySelectorAll(".fan-app").forEach(g => g.addEventListener("pointerdown", e => { e.stopPropagation(); touched = g.dataset.n; drawFan(); }));
+  }
+  function fanDrag() {
+    const scr = phone.querySelector(".v-fan"); let x0 = null, a0 = 0;
+    scr.addEventListener("pointerdown", e => { x0 = e.clientX; a0 = fanAngle; scr.setPointerCapture(e.pointerId); });
+    scr.addEventListener("pointermove", e => { if (x0 === null) return; fanAngle = a0 + (e.clientX - x0) * .5; drawFan(); });
+    const up = () => { x0 = null; }; scr.addEventListener("pointerup", up); scr.addEventListener("pointercancel", up);
+  }
+
+  // ---------- sparkle dots on the takeover crimson (static, flat white dots) ----------
+  function sparkle() {
+    const c = phone.querySelector(".sparkle"); if (!c) return;
+    const W = phone.clientWidth, H = phone.clientHeight, D = Math.min(devicePixelRatio || 1, 2);
+    c.width = W * D; c.height = H * D; c.style.width = W + "px"; c.style.height = H + "px";
+    const g = c.getContext("2d"); g.scale(D, D); g.fillStyle = "#fff";
+    let seed = 7; const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 140; i++) { const s = r() < .85 ? 1.2 : 2.2; g.fillRect(r() * W, r() * H, s, s); }
+  }
+
+  function render() {
+    phone.style.setProperty("--disp", FONTS[font]);
+    phone.innerHTML = version === "face" ? renderFace() : version === "bands" ? renderBands() : version === "text" ? renderText() : renderFan();
+    phone.querySelectorAll("[data-n]").forEach(el => { if (el.dataset.n === touched) el.classList.add("on"); tap(el, el.dataset.n); });
+    if (version === "fan") { drawFan(); fanDrag(); }
+    if (version === "text") sparkle();
+    const [t, d, pc] = INFO[version];
+    document.getElementById("d-title").textContent = t;
+    document.getElementById("d-text").textContent = d;
+    document.getElementById("d-pc").textContent = pc;
+  }
+  document.querySelectorAll("[data-v]").forEach(b => b.addEventListener("click", () => {
+    version = b.dataset.v; document.querySelectorAll("[data-v]").forEach(x => x.setAttribute("aria-pressed", x === b)); render();
+  }));
+  document.querySelectorAll("[data-f]").forEach(b => b.addEventListener("click", () => {
+    font = b.dataset.f; document.querySelectorAll("[data-f]").forEach(x => x.setAttribute("aria-pressed", x === b)); render();
+  }));
+  addEventListener("resize", () => { if (version === "fan") drawFan(); if (version === "text") sparkle(); });
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(render);
+  render();
+})();
+</script>

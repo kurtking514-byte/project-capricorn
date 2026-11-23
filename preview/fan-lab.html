@@ -1,0 +1,428 @@
+<title>Capri Fan Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Big+Shoulders+Display:wght@700;900&family=Silkscreen:wght@400;700&family=Oxanium:wght@600;800&family=Tektur:wght@600;800&family=Teko:wght@500;700&family=Russo+One&family=Black+Ops+One&family=VT323&family=Audiowide&family=Michroma&family=Rubik+Glitch&family=Bungee&family=Orbitron:wght@700;900&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --ink: #07070B; --panel: #12121A; --line: #2A2433; --text: #ECE9F2; --dim: #8C8698;
+    --green: #00B144; --crimson: #BC002B; --purple: #37197B; --pink: #FF3C68;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  }
+  body { background: var(--ink); color: var(--text); font-family: var(--mono); }
+  .wrap { max-width: 1000px; margin: 0 auto; padding-block: 20px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+  @media (max-width: 760px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+  header { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font: 700 22px/1 "Chakra Petch", system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+  h1 span { color: var(--crimson); }
+  .step { font-size: 11px; letter-spacing: .14em; color: var(--dim); text-transform: uppercase; }
+  .phone { position: relative; width: 100%; max-width: 360px; aspect-ratio: 9 / 18; background: #000; border: 1px solid var(--line); overflow: hidden; margin: 0 auto; touch-action: none; cursor: grab; user-select: none; }
+  .phone svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .side { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row-label { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); width: 100%; }
+  button { font: 600 13px/1 "Chakra Petch", system-ui, sans-serif; letter-spacing: .05em; color: var(--text); background: var(--panel); border: 1px solid var(--line); padding: 10px 13px; cursor: pointer;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
+  button.toggle { text-transform: uppercase; }
+  button[aria-pressed="true"] { border-color: var(--green); color: var(--green); }
+  button.primary { background: var(--crimson); border-color: var(--crimson); color: #000; text-transform: uppercase; }
+  button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+  .fonts button { font-size: 15px; padding: 9px 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .card h2 { margin: 0; font: 700 15px/1.1 "Chakra Petch", system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--green); }
+  .card dl { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 12px; font-size: 12px; line-height: 1.5; }
+  .card dt { color: var(--text); font-weight: 600; }
+  .card dd { margin: 0; color: var(--dim); }
+  .card dd.off { text-decoration: line-through; opacity: .5; }
+  .note { font-size: 12px; color: var(--dim); line-height: 1.5; margin: 0; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Capri <span>hair fan</span></h1>
+    <div class="step">Step 3.8b · fan upgrades</div>
+  </header>
+
+  <div class="phone" id="phone"><svg id="svg"></svg></div>
+
+  <div class="side">
+    <div class="row">
+      <button class="primary" id="open">Open the fan</button>
+      <button id="slow" aria-pressed="false" class="toggle">Slow ×4</button>
+    </div>
+    <div class="row" role="group" aria-label="Upgrades">
+      <span class="row-label">Upgrades (flip each on / off)</span>
+      <button class="toggle" data-t="ring" aria-pressed="true">Letter ring</button>
+      <button class="toggle" data-t="strands" aria-pressed="true">Hair strands</button>
+      <button class="toggle" data-t="snap" aria-pressed="false">Show motion</button>
+      <button class="toggle" data-t="watch" aria-pressed="true">She watches</button>
+    </div>
+    <div class="row" role="group" aria-label="Finding apps" id="navs">
+      <span class="row-label">Finding apps (with the letter ring on)</span>
+      <button data-nav="side" aria-pressed="false">Side strip</button>
+      <button data-nav="keys" aria-pressed="false">Bottom keys</button>
+      <button data-nav="spin" aria-pressed="true">Spin the ring</button>
+    </div>
+    <div class="row" role="group" aria-label="Arrow style" id="arrowstyles">
+      <span class="row-label">Arrow style</span>
+      <button data-as="chevron" aria-pressed="false">Chevrons</button>
+      <button data-as="tab" aria-pressed="false">Green tab</button>
+      <button data-as="box" aria-pressed="true">Box</button>
+    </div>
+    <div class="row" role="group" aria-label="Hair colors" id="schemes">
+      <span class="row-label">Hair colors</span>
+    </div>
+    <div class="row fonts" role="group" aria-label="Font" id="fonts">
+      <span class="row-label">Font</span>
+    </div>
+    <div class="card">
+      <h2>What each switch does</h2>
+      <dl id="explain"></dl>
+    </div>
+    <p class="note"><b>Side strip</b>: slide your thumb up and down the letters on the right edge. <b>Bottom keys</b>: tap or slide along the letters under her. <b>Spin the ring</b>: turn it like a dial by moving your finger around her head, or tap a letter to bring it to the top. Tap an app to open it. Press <b>Open the fan</b> to replay how it appears. The head is a plain stand-in shape; the app uses your skin. 40 made-up apps so you can feel a full phone.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  const GREEN = "#00B144", CRIMSON = "#BC002B", PURPLE = "#37197B", PINK = "#FF3C68", TEXT = "#ECE9F2", DIM = "#8C8698";
+  const STEP_MS = 1000 / 12;
+  const FONTS = [
+    ["Chakra Petch", "Chakra Petch", 700], ["Big Shoulders", "Big Shoulders Display", 900], ["Silkscreen", "Silkscreen", 700],
+    ["Oxanium", "Oxanium", 800], ["Tektur", "Tektur", 800], ["Teko", "Teko", 700], ["Russo One", "Russo One", 400],
+    ["Black Ops One", "Black Ops One", 400], ["VT323", "VT323", 400], ["Audiowide", "Audiowide", 400],
+    ["Michroma", "Michroma", 400], ["Rubik Glitch", "Rubik Glitch", 400], ["Bungee", "Bungee", 400], ["Orbitron", "Orbitron", 900],
+  ];
+  const NAMES = ["Authenticator","Banking","Browser","Calculator","Calendar","Camera","Chat","Clock","Compass","Contacts","Drive","Email","Files","Fitness","Gallery","Games","Health","Keep","Maps","Messages","Meet","Music","News","Notes","Phone","Photos","Podcasts","Radio","Recorder","Settings","Shop","Spotify","Store","Tasks","Translate","TV","Video","Wallet","Weather","YouTube"];
+  const FREQUENT = ["Messages","Camera","Music","Maps","Chat","Phone"];
+  const COLORS = ["#8EF5ED","#F4ED75","#4FC3FF","#39FF88","#FF9F5A","#C9A2FF","#E6F4F4"];
+  const color = n => COLORS[[...n].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
+  const LETTERS = ["★", ...[...new Set(NAMES.map(n => n[0]))]];
+  const appsFor = L => L === "★" ? FREQUENT : NAMES.filter(n => n[0] === L);
+
+  const EXPLAIN = {
+    ring: ["Letter ring", "The outer ring holds the letters (★ = your most used). Turn it and the apps for the letter at the top fan out closer to her. Off: all 40 apps sit on 3 rings and you spin through them."],
+    strands: ["Hair strands", "Solid flat crimson strands grow from her head, one per app, and each app sits on a strand tip. Off: faint wedges behind the apps."],
+    snap: ["Show motion", "The fan clicks from slot to slot in hard snaps and holds, no smooth spin. Opening: the hair flares out in 3 snaps, then lightning strikes the apps, nearest ring first. Off: smooth spin, hair slides out, apps fade in."],
+    watch: ["She watches", "Her eyes snap toward your finger (eyes move inside a still face, like the show) and she blinks every few seconds. Tap an app: she blinks and the app goes crimson. Off: eyes stay still."],
+  };
+
+  const svg = document.getElementById("svg"), phone = document.getElementById("phone");
+  const opt = { ring: true, strands: true, snap: false, watch: true };
+  let font = FONTS[6], nav = "spin", pickIdx = 0, scrubbing = false;
+  // hair color schemes: strand fill, strand edge (or null), dimmed fill for unselected ring letters
+  const SCHEMES = [
+    ["Crimson", { fill: CRIMSON, edge: null, dim: "#5E0016" }],
+    ["Deep red", { fill: "#3A000D", edge: CRIMSON, dim: "#22000A" }],
+    ["Outline", { fill: "none", edge: CRIMSON, dim: "#3A000D" }],
+    ["Purple", { fill: "#1E0E45", edge: "#5B33B8", dim: "#140A2E" }],
+    ["Green", { fill: "#002E16", edge: GREEN, dim: "#001E0F" }],
+    ["Shadow", { fill: "#17121F", edge: null, dim: "#100C16" }],
+  ];
+  let scheme = SCHEMES[1];
+  let vt = 0, last = performance.now(), speed = 1;
+  let rot = 0, shownRot = 0, dragging = false, dragX = 0, dragRot = 0, moved = 0;
+  let openAt = -1e9, picked = null, pickedAt = -1e9, blinkAt = -1e9, nextBlink = 3000;
+  let pointer = null, eye = { x: 0, y: 0 }, eyeTick = 0, lastTick = -1, items = [];
+  let ringIdx = 0, ringChangedAt = -1e9;
+  let W = 360, H = 720;
+
+  // ---------- controls ----------
+  const fontRow = document.getElementById("fonts");
+  FONTS.forEach(f => {
+    const b = document.createElement("button"); b.textContent = f[0]; b.style.fontFamily = `"${f[1]}", system-ui, sans-serif`; b.style.fontWeight = f[2];
+    b.setAttribute("aria-pressed", f === font); b.addEventListener("click", () => { font = f; fontRow.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+    fontRow.appendChild(b);
+  });
+  const schemeRow = document.getElementById("schemes");
+  SCHEMES.forEach(sc => {
+    const b = document.createElement("button"); b.textContent = sc[0]; b.setAttribute("aria-pressed", sc === scheme);
+    b.style.borderLeft = `6px solid ${sc[1].edge || sc[1].fill}`;
+    b.addEventListener("click", () => { scheme = sc; schemeRow.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+    schemeRow.appendChild(b);
+  });
+  document.querySelectorAll("[data-nav]").forEach(b => b.addEventListener("click", () => {
+    nav = b.dataset.nav; document.querySelectorAll("[data-nav]").forEach(x => x.setAttribute("aria-pressed", x === b)); rot = 0; shownRot = 0; pickIdx = 0;
+  }));
+  document.querySelectorAll("[data-t]").forEach(b => b.addEventListener("click", () => {
+    const k = b.dataset.t; opt[k] = !opt[k]; b.setAttribute("aria-pressed", opt[k]); rot = 0; shownRot = 0; ringIdx = 0; explain(); openAt = vt;
+  }));
+  document.getElementById("open").addEventListener("click", () => { openAt = vt; });
+  document.getElementById("slow").addEventListener("click", e => { speed = speed === 1 ? .25 : 1; e.currentTarget.setAttribute("aria-pressed", speed !== 1); });
+  function explain() {
+    document.getElementById("explain").innerHTML = Object.entries(EXPLAIN).map(([k, [t, d]]) => `<dt>${t}${opt[k] ? "" : " (off)"}</dt><dd class="${opt[k] ? "" : "off"}">${d}</dd>`).join("");
+  }
+  explain();
+
+  // ---------- input ----------
+  const local = e => { const r = phone.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; };
+  // side strip / bottom keys: which letter is under the finger (or -1)
+  function letterGeo() {
+    const n = LETTERS.length, top = 64, bottom = H * .60, per = Math.ceil(n / 2), x0 = 16;
+    return { top, bottom, gap: nav === "side" ? (bottom - top) / (n - 1) : (W - 2 * x0) / (per - 1), per, x0, rowY: [H - 62, H - 30] };
+  }
+  function letterIdx(p) {
+    const g = letterGeo(), n = LETTERS.length;
+    if (nav === "side") return Math.max(0, Math.min(n - 1, Math.round((p.y - g.top) / g.gap)));
+    const row = p.y < (g.rowY[0] + g.rowY[1]) / 2 ? 0 : 1, i = Math.max(0, Math.min(g.per - 1, Math.round((p.x - g.x0) / g.gap)));
+    return Math.min(n - 1, row * g.per + i);
+  }
+  function onLetters(p) {
+    if (!opt.ring || nav === "spin") return false;
+    const g = letterGeo();
+    if (nav === "side") return p.x >= W - 46 && p.y >= g.top - 14 && p.y <= g.bottom + 14;
+    return p.y >= g.rowY[0] - 22;
+  }
+  let dragStart = { x: 0, y: 0 }, dragAng = 0;
+  const angleOf = p => Math.atan2(p.y - H * .78, p.x - W / 2) * 180 / Math.PI;
+  // arrows in the bottom corners: one tap = one letter (or one app slot with the ring off)
+  let arrowAt = -1e9, arrowSide = 0, holdSide = 0, holdStart = 0, nextRepeat = 0, arrowStyle = "box";
+  document.querySelectorAll("[data-as]").forEach(b => b.addEventListener("click", () => {
+    arrowStyle = b.dataset.as; document.querySelectorAll("[data-as]").forEach(x => x.setAttribute("aria-pressed", x === b));
+  }));
+  const stepBy = a => { const st = opt.ring ? RING_STEP : APP_STEP; rot = (Math.round(rot / st) + a) * st; arrowAt = vt; arrowSide = a; };
+  const showArrows = () => !opt.ring || nav === "spin";
+  const arrowHit = p => !showArrows() || p.y < H - 80 ? 0 : p.x < 70 ? -1 : p.x > W - 70 ? 1 : 0;
+  phone.addEventListener("pointerdown", e => {
+    const p0 = local(e);
+    const a = arrowHit(p0);
+    if (a) { stepBy(a); holdSide = a; holdStart = vt; nextRepeat = vt + 400; phone.setPointerCapture(e.pointerId); return; }
+    if (onLetters(p0)) { scrubbing = true; pickIdx = letterIdx(p0); pointer = p0; phone.setPointerCapture(e.pointerId); return; }
+    dragging = true; dragX = e.clientX; dragRot = rot; moved = 0; pointer = p0; dragStart = p0; dragAng = angleOf(p0); phone.setPointerCapture(e.pointerId); });
+  phone.addEventListener("pointermove", e => {
+    pointer = local(e);
+    if (scrubbing) { pickIdx = letterIdx(pointer); return; }
+    if (!dragging || (opt.ring && nav !== "spin")) return;
+    // dial: turn the fan by moving your finger AROUND her head; whatever is under the finger stays under it
+    moved = Math.max(moved, Math.hypot(pointer.x - dragStart.x, pointer.y - dragStart.y));
+    let d = angleOf(pointer) - dragAng; d = ((d + 540) % 360) - 180;
+    rot = dragRot - d;
+  });
+  phone.addEventListener("pointerleave", () => { if (!dragging) pointer = null; });
+  const up = e => {
+    if (holdSide) { holdSide = 0; return; }
+    if (scrubbing) { scrubbing = false; return; }
+    if (!dragging) return; dragging = false;
+    const step = opt.ring ? RING_STEP : APP_STEP;
+    rot = Math.round(rot / step) * step;                        // land on a slot
+    if (moved < 8) {                                            // a tap: nearest app, or a ring letter
+      const p = local(e); let best = null, bd = 30;
+      for (const it of items) { const d = Math.hypot(it.x - p.x, it.y - p.y); if (d < bd) { bd = d; best = it; } }
+      if (best && best.letter) rot = (Math.round(shownRot / step) + best.off) * step;   // tapped letter snaps to the top
+      else if (best) { picked = best.name; pickedAt = vt; if (opt.watch) blinkAt = vt; }
+    }
+  };
+  phone.addEventListener("pointerup", up); phone.addEventListener("pointercancel", up);
+
+  // ---------- geometry ----------
+  const RING_STEP = 11, APP_STEP = 22;
+  const rad = d => d * Math.PI / 180;
+  function layout(t) {
+    const cx = W / 2, cy = H * .78, out = [];
+    if (opt.ring) {
+      // letter ring
+      const sel = nav === "spin" ? ((Math.round(shownRot / RING_STEP) % LETTERS.length) + LETTERS.length) % LETTERS.length : pickIdx;
+      if (sel !== ringIdx) { ringIdx = sel; ringChangedAt = t; }
+      for (let i = -9; i <= 9; i++) {
+        if (nav !== "spin") break;
+        const deg = -90 + i * RING_STEP - (shownRot - Math.round(shownRot / RING_STEP) * RING_STEP);
+        if (deg < -172 || deg > -8) continue;
+        const L = LETTERS[(((sel + i) % LETTERS.length) + LETTERS.length) % LETTERS.length], R = W * .90;
+        out.push({ ring: 2, x: cx + R * Math.cos(rad(deg)), y: cy + R * Math.sin(rad(deg)), deg, name: L, letter: true, sel: i === 0, off: i });
+      }
+      // apps for the selected letter, on 2 inner arcs
+      const apps = appsFor(LETTERS[sel]);
+      const arcs = apps.length <= 5 ? [apps] : [apps.slice(0, Math.ceil(apps.length / 2)), apps.slice(Math.ceil(apps.length / 2))];
+      arcs.forEach((list, a) => {
+        const R = W * (a === 0 ? .40 : .64), n = list.length, span = Math.min(150, 34 * (n - 1));
+        list.forEach((name, k) => {
+          const deg = n === 1 ? -90 : -90 - span / 2 + span * k / (n - 1);
+          out.push({ ring: a, x: cx + R * Math.cos(rad(deg)), y: cy + R * Math.sin(rad(deg)), deg, name, app: true });
+        });
+      });
+    } else {
+      const per = Math.ceil(NAMES.length / 3);
+      for (let ring = 0; ring < 3; ring++) {
+        const R = W * [.40, .64, .88][ring], dir = 1, list = NAMES.slice(ring * per, (ring + 1) * per);
+        const span = list.length * APP_STEP;
+        list.forEach((name, k) => {
+          let deg = -170 + k * APP_STEP - shownRot * dir;
+          deg = ((deg + 170) % span + span) % span - 170;
+          if (deg < -172 || deg > -8) return;
+          out.push({ ring, x: cx + R * Math.cos(rad(deg)), y: cy + R * Math.sin(rad(deg)), deg, name, app: true });
+        });
+      }
+    }
+    return { cx, cy, out };
+  }
+
+  // ---------- drawing ----------
+  const rng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const ff = () => `font-family:'${font[1]}',system-ui,sans-serif;font-weight:${font[2]}`;
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+  function frame(now) {
+    const dt = Math.min(now - last, 100); last = now; vt += dt * speed;
+    const r = phone.getBoundingClientRect(); W = 360; H = 360 * r.height / r.width;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    const tick = Math.floor(vt / STEP_MS), newTick = tick !== lastTick; lastTick = tick;
+
+    // fan rotation: snaps (slot by slot, updated on the show's 83 ms step) or smooth
+    const step = opt.ring ? RING_STEP : APP_STEP;
+    if (opt.snap) { if (newTick) shownRot = Math.round(rot / step) * step; }
+    else shownRot += (rot - shownRot) * Math.min(1, dt * speed / 60);
+
+    if (holdSide && vt >= nextRepeat) { stepBy(holdSide); nextRepeat += Math.max(110, 260 - (vt - holdStart) * .12); }
+    // random blinks, 2.5–7 s
+    if (opt.watch && vt > nextBlink) { blinkAt = vt; nextBlink = vt + 2500 + Math.random() * 4500; if (Math.random() < .3) setTimeout(() => { blinkAt = vt; }, 333 / speed); }
+
+    const { cx, cy, out } = layout(vt);
+    items = out;
+    const k = vt - openAt;                                       // time since the fan opened
+    // hair growth: 3 snaps (35 / 70 / 100 %) or a smooth 300 ms slide
+    const grow = opt.snap ? (k < 0 ? 0 : k < STEP_MS ? .35 : k < 2 * STEP_MS ? .7 : 1) : Math.min(1, Math.max(0, k / 300)) ** .6;
+    const strikeBase = opt.snap ? 3 * STEP_MS : 0;
+    let s = "";
+    // letter glitch on every letter change: crimson + green copies split sideways, bars cut through, ~0.12 s
+    const gk = vt - ringChangedAt, glitching = opt.ring && gk >= 0 && gk < 125;
+    const gl = (x, y, size) => {
+      if (!glitching) return "";
+      const r = rng(Math.floor(ringChangedAt) + Math.round(x) + Math.floor(gk / 40)), k = 1 - gk / 125, d = 2 + 4 * k;
+      let o = `<g style="${ff()}" font-size="${size}" text-anchor="middle">`;
+      const t = esc(GL_TEXT);
+      o += `<text x="${x + d}" y="${y}" fill="${CRIMSON}">${t}</text><text x="${x - d}" y="${y}" fill="${GREEN}">${t}</text></g>`;
+      for (let i = 0; i < 3; i++) o += `<rect x="${x - size * (.4 + r() * .8)}" y="${y - size * (.15 + r() * .7)}" width="${size * (.6 + r() * 1.2)}" height="${1.5 + r() * 3}" fill="${r() < .55 ? GREEN : CRIMSON}"/>`;
+      return o;
+    };
+    let GL_TEXT = "";
+
+    const pw = W * .32, ph = pw * .56, px = cx - pw / 2, py = cy - ph * .15;
+    const root = { x: cx, y: py + ph * .2 };
+
+    // hair: strands to every item (solid crimson, wider at the tip) or faint wedges
+    if (opt.strands) {
+      for (const it of out) {
+        const tipR = it.letter ? 10 : 22, baseR = 4;
+        const dx = it.x - root.x, dy = it.y - root.y, L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
+        const len = L * grow + (it.letter ? 0 : 18) * grow;
+        const tx = root.x + ux * len, ty = root.y + uy * len;
+        const col = it.letter && !it.sel ? scheme[1].dim : scheme[1].fill, edge = scheme[1].edge;
+        s += `<polygon stroke="${edge || "none"}" stroke-width="1.2" stroke-linejoin="miter" points="${root.x + nx * baseR},${root.y + ny * baseR} ${tx + nx * tipR},${ty + ny * tipR} ${tx + ux * 8},${ty + uy * 8} ${tx - nx * tipR},${ty - ny * tipR} ${root.x - nx * baseR},${root.y - ny * baseR}" fill="${col}"/>`;
+      }
+    } else {
+      for (let i = 0; i < 9; i++) {
+        const a0 = rad(-180 + i * 20 - 10 + (shownRot % 20)), a1 = a0 + rad(13), R = W * .98 * grow;
+        s += `<path d="M${cx} ${cy} L${cx + R * Math.cos(a0)} ${cy + R * Math.sin(a0)} L${cx + R * Math.cos(a1)} ${cy + R * Math.sin(a1)} Z" fill="${scheme[1].edge || scheme[1].fill}" opacity=".22"/>`;
+      }
+    }
+
+    // items
+    const bolts = [];
+    for (const it of out) {
+      const strikeAt = strikeBase + (it.ring) * 20 + (opt.ring && it.app ? Math.max(0, 0) : 0);
+      // with the letter ring, a new letter re-fans its apps with a short strike too
+      const sinceRing = vt - ringChangedAt;
+      let ks = k - strikeAt;
+      if (opt.ring && it.app && sinceRing < k) ks = Math.min(ks, sinceRing - it.ring * 20);
+      let alpha = 1, flash = false;
+      if (opt.snap) { if (ks < 0) continue; flash = ks < 70; if (ks < 90) bolts.push({ it, ks }); }
+      else { alpha = Math.min(1, Math.max(0, (k - 150) / 200)); if (opt.ring && it.app) alpha = Math.min(alpha, Math.max(0, sinceRing / 150)); }
+      if (it.letter) {
+        const on = it.sel, sz = 24;
+        s += `<g opacity="${alpha}">`;
+        if (on) s += `<rect x="${it.x - sz / 2 - 6 + 3}" y="${it.y - sz / 2 - 6 + 3}" width="${sz + 12}" height="${sz + 12}" fill="${PURPLE}"/><rect x="${it.x - sz / 2 - 6}" y="${it.y - sz / 2 - 6}" width="${sz + 12}" height="${sz + 12}" fill="${flash ? CRIMSON : "#000"}" stroke="${CRIMSON}" stroke-width="2"/>`;
+        if (on) { GL_TEXT = it.name; s += gl(it.x, it.y + 8, 24); }
+        s += `<text x="${it.x}" y="${it.y + 8}" text-anchor="middle" font-size="${on ? 24 : 18}" fill="${on ? (flash ? "#000" : TEXT) : DIM}" style="${ff()}">${esc(it.name)}</text></g>`;
+        continue;
+      }
+      const isPicked = picked === it.name && vt - pickedAt < 400;
+      const fill = flash || isPicked ? CRIMSON : "#000", stroke = flash || isPicked ? CRIMSON : color(it.name);
+      const x = it.x, y = it.y, h = 21;
+      s += `<g opacity="${alpha}"><polygon points="${x - h},${y - h} ${x + h},${y - h} ${x + h},${y + 7} ${x + 7},${y + h} ${x - h},${y + h}" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>`;
+      if (!flash) s += `<text x="${x}" y="${y + 7}" text-anchor="middle" font-size="19" fill="${isPicked ? "#000" : color(it.name)}" style="${ff()}">${esc(it.name[0])}</text>`;
+      if (!flash) s += `<text x="${x}" y="${y + h + 13}" text-anchor="middle" font-size="10" fill="${TEXT}" style="${ff()};letter-spacing:.04em">${esc(it.name.toUpperCase())}</text>`;
+      s += `</g>`;
+    }
+    // bolts from the bottom edge up to each item, thick 45 ms, gone at 90 ms
+    for (const { it, ks } of bolts) {
+      const rr = rng(Math.round(it.x * 13 + it.y * 7) + Math.floor(openAt)), x0 = it.x + (rr() - .5) * W * .6;
+      let d = `M${x0} ${H}`;
+      for (let q = 1; q < 8; q++) { const f = q / 8; d += ` L${x0 + (it.x - x0) * f + (rr() - .5) * W * .1 * (1 - f)} ${H + (it.y - H) * f}`; }
+      d += ` L${it.x} ${it.y}`;
+      s += `<path d="${d}" fill="none" stroke="${PINK}" stroke-width="${ks < 45 ? 4 : 2.5}" stroke-linejoin="miter"/>`;
+    }
+
+    // head stand-in: green panel, purple offset edge, two almond eyes
+    s += `<rect x="${px + 3}" y="${py + 3}" width="${pw}" height="${ph}" fill="${PURPLE}"/><rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="${GREEN}"/>`;
+    if (opt.watch && pointer && newTick) {                     // eyes snap toward the finger on the 83 ms step
+      const dx = pointer.x - cx, dy = pointer.y - (py + ph / 2), L = Math.hypot(dx, dy) || 1, m = Math.min(1, L / 120);
+      eye = opt.snap ? { x: dx / L * m * pw * .07, y: dy / L * m * ph * .12 } : eye;
+    }
+    if (opt.watch && pointer && !opt.snap) {
+      const dx = pointer.x - cx, dy = pointer.y - (py + ph / 2), L = Math.hypot(dx, dy) || 1, m = Math.min(1, L / 120);
+      eye.x += (dx / L * m * pw * .07 - eye.x) * .2; eye.y += (dy / L * m * ph * .12 - eye.y) * .2;
+    }
+    if (!opt.watch) eye = { x: 0, y: 0 };
+    const blinking = opt.watch && vt - blinkAt < STEP_MS;
+    if (!blinking) {
+      for (const ex of [-.22, .22]) {
+        const ex0 = cx + ex * pw + eye.x, ey = py + ph * .5 + eye.y, w = pw * .19, hh = ph * .2;
+        s += `<path d="M${ex0 - w} ${ey} C ${ex0 - w * .6} ${ey - hh * 1.6}, ${ex0 + w * .6} ${ey - hh * 1.6}, ${ex0 + w} ${ey} C ${ex0 + w * .6} ${ey + hh * 1.6}, ${ex0 - w * .6} ${ey + hh * 1.6}, ${ex0 - w} ${ey} Z" fill="#000"/>`;
+      }
+    } else {
+      s += `<rect x="${cx - pw * .3}" y="${py + ph * .5 - 1.5}" width="${pw * .6}" height="3" fill="#003D18"/>`;
+    }
+
+    // top line: what's selected / opening
+    const opening = picked && vt - pickedAt < 900;
+    const top = opening ? `OPENING ${picked.toUpperCase()}` : opt.ring ? (LETTERS[ringIdx] === "★" ? "MOST USED" : `STARTS WITH ${LETTERS[ringIdx]}`) : "ALL APPS";
+    if (!opening) { GL_TEXT = top; s += gl(W / 2, 34, 16); }
+    s += `<text x="${W / 2}" y="34" text-anchor="middle" font-size="${opening ? 20 : 16}" fill="${opening ? CRIMSON : DIM}" style="${ff()};letter-spacing:.12em">${esc(top)}</text>`;
+    if (opt.ring && nav !== "spin") {
+      const g = letterGeo();
+      LETTERS.forEach((L, i) => {
+        const x = nav === "side" ? W - 20 : g.x0 + (i % g.per) * g.gap, y = nav === "side" ? g.top + i * g.gap : g.rowY[Math.floor(i / g.per)];
+        const on = i === ringIdx;
+        if (on) s += `<rect x="${x - 13}" y="${y - 13}" width="26" height="26" fill="${CRIMSON}"/>`;
+        s += `<text x="${x}" y="${y + 6}" text-anchor="middle" font-size="${on ? 17 : 14}" fill="${on ? "#000" : (scrubbing ? TEXT : DIM)}" style="${ff()}">${esc(L)}</text>`;
+      });
+      if (scrubbing) {                                         // big letter bubble while sliding, like the contacts app
+        const L = LETTERS[ringIdx];
+        s += `<rect x="${W / 2 - 34 + 3}" y="${61}" width="68" height="68" fill="${PURPLE}"/><rect x="${W / 2 - 34}" y="58" width="68" height="68" fill="${CRIMSON}"/>`;
+        s += `<text x="${W / 2}" y="${108}" text-anchor="middle" font-size="44" fill="#000" style="${ff()}">${esc(L)}</text>`;
+      }
+    }
+    if (showArrows()) {
+      const nL = LETTERS.length, cur = Math.round(rot / RING_STEP);
+      for (const a of [-1, 1]) {
+        const on = (arrowSide === a && vt - arrowAt < 120) || holdSide === a, x = a < 0 ? 34 : W - 34, y = H - 44, w = 46, h = 40;
+        const chev = (cx0, col, k = 1) => `<polygon points="${cx0 + a * 9 * k},${y} ${cx0 - a * 5 * k},${y - 11 * k} ${cx0 - a * 5 * k},${y + 11 * k}" fill="${col}"/>`;
+        if (arrowStyle === "box") {
+          s += `<polygon points="${x - w / 2 + 3},${y - h / 2 + 3} ${x + w / 2 + 3},${y - h / 2 + 3} ${x + w / 2 + 3},${y + h / 2 - 10 + 3} ${x + w / 2 - 10 + 3},${y + h / 2 + 3} ${x - w / 2 + 3},${y + h / 2 + 3}" fill="${PURPLE}"/>`;
+          s += `<polygon points="${x - w / 2},${y - h / 2} ${x + w / 2},${y - h / 2} ${x + w / 2},${y + h / 2 - 10} ${x + w / 2 - 10},${y + h / 2} ${x - w / 2},${y + h / 2}" fill="${on ? CRIMSON : "#000"}" stroke="${CRIMSON}" stroke-width="1.5"/>`;
+          s += chev(x, on ? "#000" : CRIMSON);
+        } else if (arrowStyle === "tab") {           // her face panel: flat green, purple offset edge, black arrow
+          s += `<rect x="${x - w / 2 + 3}" y="${y - h / 2 + 3}" width="${w}" height="${h}" fill="${PURPLE}"/><rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" fill="${on ? CRIMSON : GREEN}"/>`;
+          s += chev(x, "#000");
+        } else {                                      // bare double chevrons, no box
+          const col = on ? TEXT : CRIMSON;
+          s += chev(x - a * 7, col, .9) + chev(x + a * 7, col, .9);
+        }
+        if (opt.ring) {                               // the letter this arrow goes to
+          const L = LETTERS[(((cur + a) % nL) + nL) % nL];
+          GL_TEXT = L; s += gl(a < 0 ? x + w / 2 + 14 : x - w / 2 - 14, y + 7, 20);
+          s += `<text x="${a < 0 ? x + w / 2 + 14 : x - w / 2 - 14}" y="${y + 7}" text-anchor="middle" font-size="20" fill="${on ? CRIMSON : TEXT}" style="${ff()}">${esc(L)}</text>`;
+        }
+      }
+    }
+    if (!(opt.ring && nav === "keys")) s += `<text x="${W / 2}" y="${H - 18}" text-anchor="middle" font-size="11" fill="${DIM}" style="font-family:'JetBrains Mono',monospace;letter-spacing:.14em">${opt.ring && nav === "side" ? "SLIDE THE LETTERS · TAP TO OPEN" : opt.ring && nav === "keys" ? "" : "TURN · TAP A LETTER · ARROWS"}</text>`;
+
+    svg.innerHTML = s;
+    requestAnimationFrame(frame);
+  }
+  openAt = 300;
+  requestAnimationFrame(frame);
+})();
+</script>
