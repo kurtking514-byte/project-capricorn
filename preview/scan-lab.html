@@ -1,0 +1,337 @@
+<title>Capri Scan Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Russo+One&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --ink: #07070B; --panel: #12121A; --line: #2A2433; --text: #ECE9F2; --dim: #8C8698;
+    --green: #00B144; --crimson: #BC002B; --purple: #37197B;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+    --disp: "Russo One", "Arial Black", system-ui, sans-serif;
+  }
+  body { background: var(--ink); color: var(--text); font-family: var(--mono); }
+  .wrap { max-width: 1000px; margin: 0 auto; padding-block: 20px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+  @media (max-width: 760px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+  header { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font: 22px/1 var(--disp); letter-spacing: .04em; text-transform: uppercase; }
+  h1 span { color: var(--crimson); }
+  .step { font-size: 11px; letter-spacing: .14em; color: var(--dim); text-transform: uppercase; }
+  .phone { position: relative; width: 100%; max-width: 360px; aspect-ratio: 9 / 18; background: #000; border: 1px solid var(--line); overflow: hidden; margin: 0 auto; touch-action: none; user-select: none; cursor: pointer; }
+  .phone canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .side { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row-label { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); width: 100%; }
+  button { font: 14px/1 var(--disp); letter-spacing: .05em; text-transform: uppercase; color: var(--text); background: var(--panel); border: 1px solid var(--line); padding: 11px 14px; cursor: pointer;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
+  button[aria-pressed="true"] { border-color: var(--green); color: var(--green); }
+  button.primary { background: var(--crimson); border-color: var(--crimson); color: #000; }
+  button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+  .card { background: var(--panel); border: 1px solid var(--line); padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .card h2 { margin: 0; font: 17px/1.1 var(--disp); letter-spacing: .05em; text-transform: uppercase; color: var(--green); }
+  .card p { margin: 0; font-size: 13px; line-height: 1.55; }
+  ul { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.55; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .note { font-size: 12px; color: var(--dim); line-height: 1.5; margin: 0; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Capri <span>status scan</span></h1>
+    <div class="step">Step 3.9 · two-finger hold</div>
+  </header>
+
+  <div class="phone" id="phone"><canvas id="c"></canvas></div>
+
+  <div class="side">
+    <div class="row" role="group" aria-label="Scan style">
+      <span class="row-label">Scan style</span>
+      <button data-v="sweep" aria-pressed="false">1 · Sweep</button>
+      <button data-v="brackets" aria-pressed="false">2 · Lock-on</button>
+      <button data-v="readout" aria-pressed="true">3 · Readout</button>
+    </div>
+    <div class="row" role="group" aria-label="Readout extras">
+      <span class="row-label">Readout extras (flip on / off)</span>
+      <button data-x="panel" aria-pressed="true">Panel + battery bar</button>
+      <button data-x="bolts" aria-pressed="true">Lightning per line</button>
+      <button data-x="more" aria-pressed="true">More info</button>
+      <button data-x="react" aria-pressed="true">She reacts</button>
+    </div>
+    <div class="row" role="group" aria-label="Fake phone state">
+      <span class="row-label">Fake phone state (to see her react)</span>
+      <button data-s="normal" aria-pressed="true">Normal</button>
+      <button data-s="low" aria-pressed="false">Battery 12%</button>
+      <button data-s="zero" aria-pressed="false">0 unread</button>
+      <button data-s="alarm" aria-pressed="false">Alarm in 20 min</button>
+      <button data-s="charge" aria-pressed="false">Charging</button>
+      <button data-s="ending" aria-pressed="false">Class ending</button>
+      <button data-s="nextsoon" aria-pressed="false">Next class soon</button>
+      <button data-s="done" aria-pressed="false">Done for today</button>
+      <button data-s="plane" aria-pressed="false">Airplane + silent</button>
+      <button data-s="learning" aria-pressed="false">Just unplugged</button>
+    </div>
+    <div class="row">
+      <button class="primary" id="go">Scan now</button>
+      <button id="slow" aria-pressed="false">Slow ×4</button>
+    </div>
+    <div class="card">
+      <h2 id="t"></h2>
+      <p id="d"></p>
+      <ul id="l"></ul>
+    </div>
+    <p class="note">On the phone: <b>hold anywhere for half a second</b> (two fingers on a real phone, one click-and-hold here). The stand-in figure is a plain shape; the app uses your skin. Numbers are made up.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  const GREEN = "#00B144", CRIMSON = "#BC002B", PURPLE = "#37197B", PINK = "#FF3C68", TEXT = "#ECE9F2", DIM = "#8C8698";
+  const STEP = 1000 / 12, HOLD_MS = 500;
+  const CLS = { now: { name: "MATH", ends: 23 }, next: { name: "PHYSICS", at: "10:30", inMin: 48 } };
+  const STATES = {
+    normal: { battery: 84, charging: false, alarm: "6:30", soon: false, unread: 3, left: "~9 H LEFT", ...CLS },
+    low: { battery: 12, charging: false, alarm: "6:30", soon: false, unread: 3, left: "~40 MIN LEFT", ...CLS },
+    zero: { battery: 84, charging: false, alarm: "6:30", soon: false, unread: 0, left: "~9 H LEFT", ...CLS },
+    alarm: { battery: 84, charging: false, alarm: "6:30", soon: true, unread: 3, left: "~9 H LEFT", now: null, next: null },
+    charge: { battery: 61, charging: true, alarm: "6:30", soon: false, unread: 3, left: "FULL IN 40 MIN", ...CLS },
+    ending: { battery: 84, charging: false, alarm: "6:30", soon: false, unread: 3, left: "~9 H LEFT", now: { name: "MATH", ends: 4 }, next: CLS.next },
+    nextsoon: { battery: 84, charging: false, alarm: "6:30", soon: false, unread: 3, left: "~9 H LEFT", now: null, next: { name: "PHYSICS", at: "10:30", inMin: 8 } },
+    done: { battery: 84, charging: false, alarm: "6:30", soon: false, unread: 3, left: "~9 H LEFT", now: null, next: null },
+  };
+  const TOGGLES = { wifi: true, bt: true, plane: false, silent: true, dnd: false, loc: true, data: true };
+  for (const k in STATES) STATES[k].tg = TOGGLES;
+  STATES.plane = { ...STATES.normal, tg: { wifi: false, bt: false, plane: true, silent: true, dnd: true, loc: false, data: false } };
+  const LEFT = { normal: "~6 H 40 M LEFT", low: "~35 MIN LEFT", zero: "~6 H 40 M LEFT", alarm: "~6 H 40 M LEFT", charge: "FULL IN 40 MIN",
+    ending: "~6 H 40 M LEFT", nextsoon: "~6 H 40 M LEFT", done: "~6 H 40 M LEFT", plane: "~11 H LEFT" };
+  for (const k in LEFT) STATES[k].left = LEFT[k];
+  STATES.learning = { ...STATES.normal, left: "LEARNING…" };
+  let STATUS = STATES.normal;
+  const X = { panel: true, bolts: true, more: true, react: true };
+  const cap = w => w[0] + w.slice(1).toLowerCase();
+  const reactLine = () => !X.react ? "There. Don't make me repeat it."
+    : STATUS.battery <= 15 && !STATUS.charging ? `${STATUS.battery}%? Plug me in before I black out on you.`
+    : STATUS.charging ? "Charging. Finally, some respect."
+    : STATUS.now && STATUS.now.ends <= 5 ? `${STATUS.now.ends} minutes of ${cap(STATUS.now.name)} left. Try to look awake.`
+    : !STATUS.now && STATUS.next && STATUS.next.inMin <= 10 ? `${cap(STATUS.next.name)} in ${STATUS.next.inMin}. Move.`
+    : STATUS.soon ? "Alarm in 20 minutes. Sleep fast."
+    : !STATUS.now && !STATUS.next ? "No more classes. Go touch grass."
+    : STATUS.unread === 0 ? "Zero unread. Nobody misses you. Lucky me."
+    : "There. Don't make me repeat it.";
+  const LINE = "84% juice, alarm at 6:30, 3 unread. You're welcome.";
+  const INFO = {
+    sweep: ["Sweep", "A hard crimson band snaps down the screen in 4 jumps (one every 83 ms), like she's scanning the phone. Bars flicker behind it. Then she says the line.",
+      ["0 ms: thin crimson line at the top", "4 jumps × 83 ms down the screen, a band 12% tall", "green + crimson bars trail it for 2 steps", "~400 ms: she talks"]],
+    brackets: ["Lock-on", "Crimson corner brackets snap in around the whole screen and then around her, like she locks onto the phone. One red hit, then she talks.",
+      ["0 ms: brackets at the screen corners", "83 ms: brackets jump in to frame her", "170 ms: full crimson hit 70 ms, gap 40, slash 60", "~350 ms: she talks"]],
+    readout: ["Readout", "A red hit, then three big readout lines snap in one by one above her (battery, alarm, unread) in the bold font, held for 3 s, then break into bars. She still says the line.",
+      ["0 ms: full crimson hit 70 ms", "110 ms, 190 ms, 270 ms: each line snaps in", "held 3 s, then 2 steps of bars", "she talks at ~300 ms"]],
+  };
+
+  const cv = document.getElementById("c"), g = cv.getContext("2d"), phone = document.getElementById("phone");
+  let W = 360, H = 720, D = 1, version = "sweep", vt = 0, last = performance.now(), speed = 1, scanAt = -1e9, holdAt = -1;
+  const rng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+
+  function resize() {
+    const r = phone.getBoundingClientRect(); D = Math.min(devicePixelRatio || 1, 2);
+    W = r.width; H = r.height; cv.width = Math.round(W * D); cv.height = Math.round(H * D); g.setTransform(D, 0, 0, D, 0, 0);
+  }
+  addEventListener("resize", resize);
+
+  function setV(v) {
+    version = v; document.querySelectorAll("[data-v]").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === v));
+    const [t, d, l] = INFO[v];
+    document.getElementById("t").textContent = t; document.getElementById("d").textContent = d;
+    document.getElementById("l").innerHTML = l.map(x => `<li>${x}</li>`).join("");
+  }
+  document.querySelectorAll("[data-v]").forEach(b => b.addEventListener("click", () => { setV(b.dataset.v); scanAt = vt; }));
+  document.getElementById("go").addEventListener("click", () => { scanAt = vt; });
+  document.querySelectorAll("[data-x]").forEach(b => b.addEventListener("click", () => {
+    X[b.dataset.x] = !X[b.dataset.x]; b.setAttribute("aria-pressed", X[b.dataset.x]); setV("readout"); scanAt = vt;
+  }));
+  document.querySelectorAll("[data-s]").forEach(b => b.addEventListener("click", () => {
+    STATUS = STATES[b.dataset.s]; document.querySelectorAll("[data-s]").forEach(x => x.setAttribute("aria-pressed", x === b)); setV("readout"); scanAt = vt;
+  }));
+  document.getElementById("slow").addEventListener("click", e => { speed = speed === 1 ? .25 : 1; e.currentTarget.setAttribute("aria-pressed", speed !== 1); });
+  phone.addEventListener("pointerdown", () => { holdAt = vt; });
+  const up = () => { holdAt = -1; };
+  phone.addEventListener("pointerup", up); phone.addEventListener("pointercancel", up); phone.addEventListener("pointerleave", up);
+
+  // ---------- pieces ----------
+  function figure(x, y, s, crimson) {             // plain stand-in: panel head, black body with crimson bands
+    const pw = s * .5, ph = pw * .55;
+    g.fillStyle = crimson ? CRIMSON : "#111"; g.fillRect(x - s * .18, y + ph * .6, s * .36, s * 1.15);
+    if (!crimson) { g.fillStyle = CRIMSON; g.fillRect(x - s * .18, y + ph * .6 + s * .2, s * .36, s * .07); g.fillRect(x - s * .16, y + ph * .6 + s * .6, s * .32, s * .1); }
+    g.fillStyle = crimson ? CRIMSON : PURPLE; g.fillRect(x - pw / 2 + 3, y - ph / 2 + 3, pw, ph);
+    g.fillStyle = crimson ? CRIMSON : GREEN; g.fillRect(x - pw / 2, y - ph / 2, pw, ph);
+    if (crimson) return;
+    g.fillStyle = "#000";
+    for (const ex of [-.22, .22]) {
+      const cx = x + ex * pw, w = pw * .19, h = ph * .2;
+      g.beginPath(); g.moveTo(cx - w, y); g.bezierCurveTo(cx - w * .6, y - h * 1.6, cx + w * .6, y - h * 1.6, cx + w, y);
+      g.bezierCurveTo(cx + w * .6, y + h * 1.6, cx - w * .6, y + h * 1.6, cx - w, y); g.fill();
+    }
+  }
+  function bars(seed, n, y0, y1) {
+    const r = rng(seed);
+    for (let i = 0; i < n; i++) {
+      g.fillStyle = r() < .55 ? GREEN : CRIMSON;
+      g.fillRect(r() * W * .8, y0 + r() * (y1 - y0), W * (.1 + .4 * r()), H * (.004 + .02 * r() * r()));
+    }
+  }
+  function bubble(text, k) {                         // speech bubble above her, snaps in
+    if (k < 0) return;
+    g.font = `15px "Russo One", sans-serif`;
+    const words = text.split(" "), lines = [""], maxW = W * .72;
+    for (const w of words) { const t = lines[lines.length - 1] ? lines[lines.length - 1] + " " + w : w; if (g.measureText(t).width > maxW) lines.push(w); else lines[lines.length - 1] = t; }
+    const lh = 20, bw = maxW + 24, bh = lines.length * lh + 18, bx = (W - bw) / 2, by = (version === "readout" ? H * .78 : H * .34) - bh;
+    g.fillStyle = PURPLE; g.fillRect(bx + 4, by + 4, bw, bh);
+    g.fillStyle = "#000"; g.fillRect(bx, by, bw, bh);
+    g.strokeStyle = CRIMSON; g.lineWidth = 2; g.strokeRect(bx, by, bw, bh);
+    g.fillStyle = TEXT; g.textAlign = "left"; g.textBaseline = "middle";
+    lines.forEach((l, i) => g.fillText(l, bx + 12, by + 9 + lh / 2 + i * lh));
+  }
+  function icon(key, x, y, on) {
+    const c = on ? (key === "plane" || key === "silent" || key === "dnd" ? CRIMSON : TEXT) : "#4A4458";
+    g.strokeStyle = c; g.fillStyle = c; g.lineWidth = 2; g.lineJoin = "miter"; g.lineCap = "butt";
+    g.beginPath();
+    if (key === "wifi") {
+      for (const r of [4, 8, 12]) { g.moveTo(x + r * Math.cos(-Math.PI * .75), y + 5 + r * Math.sin(-Math.PI * .75)); g.arc(x, y + 5, r, -Math.PI * .75, -Math.PI * .25); }
+      g.stroke(); g.fillRect(x - 1.5, y + 3.5, 3, 3);
+    } else if (key === "bt") {
+      g.moveTo(x - 4, y - 4); g.lineTo(x + 4, y + 4); g.lineTo(x, y + 8); g.lineTo(x, y - 8); g.lineTo(x + 4, y - 4); g.lineTo(x - 4, y + 4); g.stroke();
+    } else if (key === "data") {
+      for (let i = 0; i < 4; i++) g.fillRect(x - 8 + i * 4.5, y + 7 - (i + 1) * 3.5, 3, (i + 1) * 3.5);
+    } else if (key === "plane") {
+      g.moveTo(x, y - 9); g.lineTo(x + 1.5, y - 2); g.lineTo(x + 9, y + 2); g.lineTo(x + 9, y + 4); g.lineTo(x + 1.5, y + 2);
+      g.lineTo(x + 1, y + 6); g.lineTo(x + 4, y + 8); g.lineTo(x + 4, y + 9); g.lineTo(x, y + 8); g.lineTo(x - 4, y + 9); g.lineTo(x - 4, y + 8);
+      g.lineTo(x - 1, y + 6); g.lineTo(x - 1.5, y + 2); g.lineTo(x - 9, y + 4); g.lineTo(x - 9, y + 2); g.lineTo(x - 1.5, y - 2); g.closePath(); g.fill();
+    } else if (key === "silent") {
+      g.moveTo(x - 6, y + 4); g.lineTo(x - 4, y - 3); g.quadraticCurveTo(x, y - 9, x + 4, y - 3); g.lineTo(x + 6, y + 4); g.closePath(); g.fill();
+      g.fillRect(x - 1.5, y + 5, 3, 2.5);
+      if (on) { g.strokeStyle = "#000"; g.lineWidth = 2.5; g.beginPath(); g.moveTo(x - 8, y - 7); g.lineTo(x + 8, y + 8); g.stroke(); g.strokeStyle = c; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x - 8, y - 7); g.lineTo(x + 8, y + 8); g.stroke(); }
+    } else if (key === "dnd") {
+      g.arc(x, y, 8, 0, Math.PI * 2); g.fill(); g.fillStyle = "#000"; g.fillRect(x - 5, y - 1.5, 10, 3);
+    } else if (key === "loc") {
+      g.moveTo(x, y + 9); g.lineTo(x - 6, y - 1); g.arc(x, y - 3, 6, Math.PI * .85, Math.PI * .15); g.closePath(); g.fill();
+      g.fillStyle = "#000"; g.fillRect(x - 1.5, y - 4.5, 3, 3);
+    }
+    if (!on) { g.strokeStyle = "#4A4458"; g.lineWidth = 2; g.beginPath(); g.moveTo(x - 9, y + 9); g.lineTo(x + 9, y - 9); g.stroke(); }
+  }
+  function hit(k) {                                  // the C3 command hit: crimson 70, gap 40, slash 60
+    if (k >= 0 && k < 70) { g.fillStyle = CRIMSON; g.fillRect(0, 0, W, H); return true; }
+    if (k >= 110 && k < 170) {
+      g.fillStyle = CRIMSON; g.beginPath(); g.moveTo(0, H * .62); g.lineTo(W, H * .38); g.lineTo(W, H * .48); g.lineTo(0, H * .72); g.fill();
+    }
+    return false;
+  }
+  function bracket(x0, y0, x1, y1, len, w) {
+    g.fillStyle = CRIMSON;
+    for (const [x, y, sx, sy] of [[x0, y0, 1, 1], [x1, y0, -1, 1], [x0, y1, 1, -1], [x1, y1, -1, -1]]) {
+      g.fillRect(sx > 0 ? x : x - len, sy > 0 ? y : y - w, len, w);
+      g.fillRect(sx > 0 ? x : x - w, sy > 0 ? y : y - len, w, len);
+    }
+  }
+
+  // ---------- frame ----------
+  function frame(now) {
+    const dt = Math.min(now - last, 100); last = now; vt += dt * speed;
+    if (holdAt >= 0 && vt - holdAt > HOLD_MS) { scanAt = vt; holdAt = -1; }
+    g.fillStyle = "#000"; g.fillRect(0, 0, W, H);
+    // home: clock, figure, chatbox, dock
+    g.fillStyle = TEXT; g.textAlign = "center"; g.textBaseline = "alphabetic";
+    g.font = `44px "Russo One", sans-serif`; g.fillText("21:47", W / 2, H * .1);
+    const fx = W / 2, fy = H * .42, fs = W * .5;
+    const k = vt - scanAt;
+    let talkAt = 1e9;
+
+    if (version === "sweep") {
+      figure(fx, fy, fs, false);
+      if (k >= 0 && k < 5 * STEP) {
+        const j = Math.min(4, Math.floor(k / STEP)), y = j === 0 ? 0 : H * (j / 4) - H * .12;
+        g.fillStyle = CRIMSON; g.fillRect(0, Math.max(0, y), W, j === 0 ? 4 : H * .12);
+        if (j > 0) bars(j * 13 + Math.floor(scanAt), 8, Math.max(0, y - H * .18), y);
+      }
+      talkAt = 5 * STEP;
+    } else if (version === "brackets") {
+      figure(fx, fy, fs, false);
+      if (k >= 0 && k < STEP) bracket(10, 10, W - 10, H - 10, 34, 5);
+      else if (k >= STEP && k < 2 * STEP) bracket(fx - fs * .45, fy - fs * .3, fx + fs * .45, fy + fs * 1.4, 22, 4);
+      else if (k >= 2 * STEP && hit(k - 2 * STEP)) figure(fx, fy, fs, true);
+      talkAt = 2 * STEP + 180;
+    } else {
+      const flash = hit(k);
+      figure(fx, fy, fs, flash);
+      const N = STATUS.now, NX = STATUS.next;
+      const rows = [
+        { label: "BATTERY", value: `${STATUS.battery}%`, bar: true, sub: STATUS.left, bad: STATUS.battery <= 15 && !STATUS.charging },
+        N ? { label: "CLASS NOW", value: N.name, sub: `ENDS IN ${N.ends} MIN`, bad: N.ends <= 5 }
+          : { label: "CLASS NOW", value: "FREE", sub: NX ? "" : "DONE FOR TODAY" },
+        NX ? { label: "NEXT CLASS", value: `${NX.name} ${NX.at}`, sub: `IN ${NX.inMin} MIN`, bad: NX.inMin <= 10 }
+           : { label: "NEXT CLASS", value: "NONE" },
+        { label: "ALARM", value: STATUS.soon ? "IN 20 MIN" : STATUS.alarm, bad: STATUS.soon },
+        { label: "NOTIFS", value: STATUS.unread === 0 ? "NONE" : `${STATUS.unread} UNREAD` },
+      ];
+      if (X.more) rows.push(
+        { label: "SCREEN TIME TODAY", value: "3 H 12 M" },
+        { label: "WEATHER", value: "24° RAIN" },
+      );
+      const hold = 3500, gap = X.more ? 45 : 60, last = 110 + (rows.length - 1) * gap, endAt = last + hold;
+      const size = X.more ? 21 : 26, lh = X.more ? 40 : 46, x0 = W * .1, y0 = H * .15 + 50;
+      if (k >= 110 && k < endAt + 2 * STEP) {
+        if (X.panel && k < endAt) {                       // black panel, purple offset, crimson edge, status strip on top
+          const pw = W * .84, strip = 34, ph = rows.length * lh + 16 + strip, px = W * .08, py = y0 - 34 - strip;
+          g.fillStyle = PURPLE; g.fillRect(px + 4, py + 4, pw, ph);
+          g.fillStyle = "#000"; g.fillRect(px, py, pw, ph);
+          g.strokeStyle = CRIMSON; g.lineWidth = 2; g.strokeRect(px, py, pw, ph);
+          g.fillStyle = CRIMSON; g.fillRect(px, py + strip, pw, 2);
+          const keys = ["wifi", "bt", "data", "plane", "silent", "dnd", "loc"], gap = (pw - 24) / keys.length;
+          keys.forEach((key, i) => icon(key, px + 12 + gap * (i + .5), py + strip / 2, STATUS.tg[key]));
+        }
+        rows.forEach((r, i) => {
+          const at = 110 + i * gap; if (k < at) return;
+          const y = y0 + i * lh, ki = k - at;
+          if (k >= endAt) { bars(i * 7 + Math.floor((k - endAt) / STEP), 4, y - 20, y + 10); return; }
+          // lightning from the top onto the line, thick 45 ms, gone at 90 ms
+          if (X.bolts && ki < 90) {
+            const rr = rng(i * 31 + Math.floor(scanAt)), tx = x0 + 40 + rr() * W * .4, sx = tx + (rr() - .5) * W * .5;
+            g.strokeStyle = PINK; g.lineWidth = ki < 45 ? 4 : 2.5; g.lineJoin = "miter"; g.beginPath(); g.moveTo(sx, 0);
+            for (let q = 1; q < 7; q++) { const f = q / 7; g.lineTo(sx + (tx - sx) * f + (rr() - .5) * W * .1 * (1 - f), (y - 10) * f); }
+            g.lineTo(tx, y - 10); g.stroke();
+          }
+          g.textAlign = "left"; g.textBaseline = "alphabetic";
+          g.fillStyle = DIM; g.font = `11px "JetBrains Mono", monospace`; g.fillText(r.label, x0, y - size - 2);
+          g.font = `${size}px "Russo One", sans-serif`;
+          if (ki < STEP) { g.fillStyle = GREEN; g.fillText(r.value, x0 - 4, y); g.fillStyle = CRIMSON; g.fillText(r.value, x0 + 4, y); return; }
+          g.fillStyle = r.bad ? CRIMSON : TEXT; g.fillText(r.value, x0, y);
+          if (r.sub && !r.bar) { const vx = x0 + g.measureText(r.value).width + 10; g.font = `12px "JetBrains Mono", monospace`; g.fillStyle = r.bad ? CRIMSON : DIM; g.fillText(r.sub, vx, y); g.font = `${size}px "Russo One", sans-serif`; }
+          if (r.bar && X.panel) {                         // chunky segmented battery bar
+            const bx = x0 + g.measureText(r.value).width + 14, segs = 10, on = Math.round(STATUS.battery / 10), sw = 9, sh = size * .7;
+            for (let j = 0; j < segs; j++) {
+              g.fillStyle = j < on ? (r.bad ? CRIMSON : GREEN) : "#1C1824";
+              g.fillRect(bx + j * (sw + 3), y - sh, sw, sh);
+            }
+            if (STATUS.charging) { g.fillStyle = GREEN; g.fillRect(bx + segs * (sw + 3) + 2, y - sh * .7, 4, sh * .4); }
+            // time left (or until full) under the bar, small; "LEARNING…" until there's enough data
+            g.font = `11px "JetBrains Mono", monospace`; g.fillStyle = r.bad ? CRIMSON : STATUS.charging ? GREEN : DIM;
+            g.fillText(r.sub, bx, y + 13);
+          }
+        });
+      }
+      talkAt = 300;
+    }
+    if (k >= talkAt && k < talkAt + 4500) bubble(version === "readout" ? reactLine() : LINE, k - talkAt);
+
+    // chatbox + dock
+    g.strokeStyle = CRIMSON; g.lineWidth = 1.5; g.strokeRect(W * .06, H * .82, W * .88, 40);
+    g.fillStyle = DIM; g.font = `12px "JetBrains Mono", monospace`; g.textAlign = "left"; g.fillText("what do you want to do?", W * .06 + 12, H * .82 + 25);
+    for (let i = 0; i < 4; i++) { g.strokeStyle = DIM; g.strokeRect(W * (.12 + i * .2), H * .91, 42, 42); }
+    // hold hint
+    if (holdAt >= 0) { const p = Math.min(1, (vt - holdAt) / HOLD_MS); g.fillStyle = CRIMSON; g.fillRect(0, H - 4, W * p, 4); }
+    requestAnimationFrame(frame);
+  }
+  setV("readout"); resize();
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(resize);
+  scanAt = 600;
+  requestAnimationFrame(frame);
+})();
+</script>

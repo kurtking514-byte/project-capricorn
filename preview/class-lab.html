@@ -1,0 +1,327 @@
+<title>Capri Class Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Russo+One&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --ink: #07070B; --panel: #12121A; --line: #2A2433; --text: #ECE9F2; --dim: #8C8698;
+    --green: #00B144; --crimson: #BC002B; --purple: #37197B; --deep: #3A000D;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+    --disp: "Russo One", "Arial Black", system-ui, sans-serif;
+  }
+  body { background: var(--ink); color: var(--text); font-family: var(--mono); }
+  .wrap { max-width: 1000px; margin: 0 auto; padding-block: 20px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+  @media (max-width: 760px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+  header { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font: 22px/1 var(--disp); letter-spacing: .04em; text-transform: uppercase; }
+  h1 span { color: var(--crimson); }
+  .step { font-size: 11px; letter-spacing: .14em; color: var(--dim); text-transform: uppercase; }
+  button { font: 13px/1 var(--disp); letter-spacing: .05em; text-transform: uppercase; color: var(--text); background: var(--panel); border: 1px solid var(--line); padding: 10px 13px; cursor: pointer;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
+  button[aria-pressed="true"] { border-color: var(--green); color: var(--green); }
+  button.primary { background: var(--crimson); border-color: var(--crimson); color: #000; }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .row-label { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); width: 100%; }
+  .side { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+  .note { font-size: 12px; color: var(--dim); line-height: 1.55; margin: 0; }
+  .note b { color: var(--text); }
+
+  /* phone */
+  .phone { position: relative; width: 100%; max-width: 360px; aspect-ratio: 9 / 18; background: #000; border: 1px solid var(--line); overflow: hidden; margin: 0 auto; display: flex; flex-direction: column; }
+  .mode { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+  /* chat mode */
+  .her { display: flex; gap: 12px; align-items: flex-start; padding: 16px 14px 10px; }
+  .head { flex: none; width: 54px; height: 30px; background: var(--green); position: relative; box-shadow: 3px 3px 0 var(--purple); }
+  .head::before, .head::after { content: ""; position: absolute; top: 9px; width: 18px; height: 12px; background: #000; clip-path: ellipse(50% 50% at 50% 50%); }
+  .head::before { left: 5px; } .head::after { right: 5px; }
+  .head.blink::before, .head.blink::after { display: none; }
+  .say { flex: 1; min-width: 0; background: #000; border: 2px solid var(--crimson); box-shadow: 4px 4px 0 var(--purple); padding: 10px 12px; font: 14px/1.35 var(--disp); }
+  .list { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 14px; display: flex; flex-direction: column; gap: 6px; scrollbar-width: none; }
+  .list::-webkit-scrollbar { display: none; }
+  .day-h { font: 11px/1 var(--mono); letter-spacing: .16em; color: var(--crimson); margin-top: 8px; }
+  .cl { display: flex; justify-content: space-between; gap: 10px; border-left: 3px solid var(--crimson); background: var(--deep); padding: 7px 10px; font: 14px/1.2 var(--disp); }
+  .cl small { font: 12px/1.2 var(--mono); color: var(--dim); white-space: nowrap; }
+  .cl.flash { background: var(--crimson); color: #000; }
+  .cl.flash small { color: #000; }
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding: 8px 14px 0; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: none; font: 11px/1 var(--mono); color: var(--text); background: #0D0B12; border: 1px solid var(--line); padding: 7px 9px; cursor: pointer; white-space: nowrap; }
+  .chat { display: flex; gap: 6px; padding: 10px 14px 16px; }
+  .chat input { flex: 1; min-width: 0; background: #000; color: var(--text); border: 1.5px solid var(--crimson); padding: 11px 12px; font: 13px var(--mono); }
+  .chat button { padding: 10px 12px; }
+
+  /* grid mode */
+  .g-top { display: grid; grid-template-columns: 34px repeat(5, minmax(0, 1fr)); padding: 10px 6px 4px 0; }
+  .g-top div { text-align: center; font: 13px/1 var(--disp); color: var(--dim); }
+  .g-top div.today { color: var(--crimson); }
+  .g-body { position: relative; flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; }
+  .g-body::-webkit-scrollbar { display: none; }
+  .g-inner { position: relative; margin-right: 6px; touch-action: none; }
+  .g-hour { position: absolute; left: 0; right: 0; border-top: 1px solid #17131E; }
+  .g-hour span { position: absolute; left: 0; width: 30px; top: -7px; text-align: right; font: 10px/1 var(--mono); color: var(--dim); }
+  .blk { position: absolute; background: var(--deep); border: 1.5px solid var(--crimson); padding: 3px 4px; overflow: hidden; cursor: grab; box-sizing: border-box; }
+  .blk b { display: block; font: 11px/1.1 var(--disp); text-transform: uppercase; word-break: break-word; }
+  .blk i { display: block; font: 9px/1.2 var(--mono); color: var(--dim); font-style: normal; }
+  .blk .hdl { position: absolute; left: 0; right: 0; bottom: 0; height: 10px; cursor: ns-resize; }
+  .blk .hdl::after { content: ""; position: absolute; left: 50%; top: 5px; width: 14px; height: 2px; margin-left: -7px; background: var(--crimson); }
+  .blk.sel { background: var(--crimson); color: #000; }
+  .blk.sel i { color: #000; }
+  .blk.sel .hdl::after { background: #000; }
+  .nowline { position: absolute; left: 30px; right: 0; height: 2px; background: var(--green); pointer-events: none; }
+  .sheet { border-top: 2px solid var(--crimson); background: #000; padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .sheet input { background: #000; color: var(--text); border: 1.5px solid var(--crimson); padding: 10px 12px; font: 15px var(--disp); text-transform: uppercase; }
+  .sheet .days { display: flex; gap: 6px; }
+  .sheet .days button { flex: 1; padding: 9px 0; }
+  .sheet .t { font: 12px var(--mono); color: var(--dim); }
+  .g-hint { text-align: center; font: 11px/1 var(--mono); letter-spacing: .1em; color: var(--dim); padding: 10px 0 14px; }
+
+  /* readout */
+  .readout { background: #000; border: 2px solid var(--crimson); box-shadow: 4px 4px 0 var(--purple); padding: 12px 14px; display: grid; gap: 10px; }
+  .readout .lab { font: 11px/1 var(--mono); color: var(--dim); letter-spacing: .1em; }
+  .readout .val { font: 22px/1.1 var(--disp); }
+  .readout .val small { font: 12px var(--mono); color: var(--dim); margin-left: 8px; }
+  .readout .val.bad, .readout .val.bad small { color: var(--crimson); }
+  .clock { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  select, input[type=range] { accent-color: var(--crimson); }
+  select { background: var(--panel); color: var(--text); border: 1px solid var(--line); padding: 8px; font: 13px var(--mono); }
+  input[type=range] { flex: 1; min-width: 160px; }
+  .clock output { font: 18px var(--disp); min-width: 60px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Capri <span>classes</span></h1>
+    <div class="step">Step 3.9 · class input</div>
+  </header>
+
+  <div class="phone" id="phone"></div>
+
+  <div class="side">
+    <div class="row" role="group" aria-label="Input mode">
+      <span class="row-label">How you enter classes</span>
+      <button data-m="chat" aria-pressed="true">Tell Capri</button>
+      <button data-m="grid" aria-pressed="false">Week grid</button>
+    </div>
+    <div>
+      <span class="row-label">Fake clock (to test the scan lines)</span>
+      <div class="clock">
+        <select id="day" aria-label="Day"><option value="0">Monday</option><option value="1">Tuesday</option><option value="2">Wednesday</option><option value="3">Thursday</option><option value="4">Friday</option><option value="5">Saturday</option><option value="6">Sunday</option></select>
+        <input type="range" id="time" min="360" max="1320" step="5" value="525" aria-label="Time of day">
+        <output id="tout"></output>
+      </div>
+    </div>
+    <div class="readout" aria-live="polite">
+      <div><div class="lab">CLASS NOW</div><div class="val" id="r-now"></div></div>
+      <div><div class="lab">NEXT CLASS</div><div class="val" id="r-next"></div></div>
+    </div>
+    <p class="note"><b>Tell Capri</b>: type like a text, e.g. <b>math mon wed 8 to 9:30</b>, <b>physics tue thu 10:30-12</b>, <b>move physics to 1pm</b>, <b>remove math</b>, <b>what's tomorrow</b>. Times 1–6 without am/pm count as afternoon. Or tap a sample above the chatbox.<br><b>Week grid</b>: tap an empty spot to add a class (1 hour), drag a class to move it, drag its bottom edge to make it longer, tap it to rename, copy to other days or delete. Both modes share the same timetable.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+  const DAY_WORDS = { mon: [0], monday: [0], tue: [1], tues: [1], tuesday: [1], wed: [2], weds: [2], wednesday: [2], thu: [3], thur: [3], thurs: [3], thursday: [3],
+    fri: [4], friday: [4], sat: [5], saturday: [5], sun: [6], sunday: [6], weekdays: [0, 1, 2, 3, 4], daily: [0, 1, 2, 3, 4], everyday: [0, 1, 2, 3, 4],
+    mwf: [0, 2, 4], tth: [1, 3], tuth: [1, 3] };
+  let classes = [
+    { id: 1, name: "MATH", day: 0, start: 480, end: 570 }, { id: 2, name: "MATH", day: 2, start: 480, end: 570 },
+    { id: 3, name: "PHYSICS", day: 1, start: 630, end: 720 }, { id: 4, name: "PHYSICS", day: 3, start: 630, end: 720 },
+    { id: 5, name: "ENGLISH", day: 0, start: 600, end: 690 }, { id: 6, name: "HISTORY", day: 4, start: 780, end: 870 },
+  ];
+  let nextId = 7, mode = "chat", flashId = new Set(), reply = "Tell me your classes. Like: math mon wed 8 to 9:30. I'll remember. Unlike you.";
+  const phone = document.getElementById("phone");
+  const fmt = m => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
+  const cap = s => s.charAt(0) + s.slice(1).toLowerCase();
+  const byDay = d => classes.filter(c => c.day === d).sort((a, b) => a.start - b.start);
+
+  // ---------- chat parser ----------
+  function parseTime(tok, ampmHint) {
+    const m = tok.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)?$/); if (!m) return null;
+    let h = +m[1], min = +(m[2] || 0); const ap = m[3] || ampmHint;
+    if (h > 23 || min > 59) return null;
+    if (ap === "pm" && h < 12) h += 12; else if (ap === "am" && h === 12) h = 0;
+    else if (!ap && h >= 1 && h <= 6) h += 12;          // school hours: 1–6 means afternoon
+    return h * 60 + min;
+  }
+  function times(text) {
+    // "8 to 9:30", "10:30-12", "1pm-2:30pm", "8:00 until 9"
+    const t = text.replace(/\s*(am|pm)\b/g, "$1");
+    const r = t.match(/(\d{1,2}(?::\d{2})?(?:am|pm)?)\s*(?:to|-|–|until|till)\s*(\d{1,2}(?::\d{2})?(?:am|pm)?)/);
+    if (r) {
+      const endAp = (r[2].match(/(am|pm)$/) || [])[1];
+      let s = parseTime(r[1], r[1].match(/(am|pm)$/) ? undefined : endAp), e = parseTime(r[2]);
+      if (s != null && e != null && e <= s && !endAp) e += 12 * 60;
+      return s != null && e != null && e > s ? { start: s, end: e, used: r[0] } : null;
+    }
+    const one = t.match(/(?:^|\s)(?:at\s+)?(\d{1,2}(?::\d{2})?(?:am|pm)?)(?=\s|$)/);
+    if (one) { const s = parseTime(one[1]); if (s != null) return { start: s, end: s + 60, used: one[0] }; }
+    return null;
+  }
+  function daysIn(words) { const out = new Set(); for (const w of words) (DAY_WORDS[w] || []).forEach(d => out.add(d)); return [...out].sort(); }
+  const findName = s => { const n = s.trim().toUpperCase(); return classes.some(c => c.name === n) ? n : null; };
+
+  function handle(raw) {
+    const text = raw.trim().toLowerCase().replace(/[.,!?]+$/g, "").replace(/\s+/g, " ");
+    if (!text) return;
+    let m;
+    if ((m = text.match(/^(?:remove|delete|drop)\s+(.+?)(?:\s+on\s+(.+))?$/))) {
+      const name = findName(m[1]); if (!name) return say(`No "${m[1]}" in your week. Can't drop what doesn't exist.`);
+      const ds = m[2] ? daysIn(m[2].split(" ")) : null;
+      classes = classes.filter(c => !(c.name === name && (!ds || ds.includes(c.day))));
+      return say(`${cap(name)}${ds ? " on " + ds.map(d => cap(DAYS[d])).join(" + ") : ""}: gone. Don't get used to skipping.`);
+    }
+    if ((m = text.match(/^move\s+(.+?)\s+to\s+(.+)$/))) {
+      const name = findName(m[1]); if (!name) return say(`Move what? There's no "${m[1]}".`);
+      const words = m[2].split(" "), ds = daysIn(words), tm = times(m[2]);
+      const hit = classes.filter(c => c.name === name);
+      hit.forEach(c => { const len = c.end - c.start; if (tm) { c.start = tm.start; c.end = tm.used.match(/to|-|–|until|till/) ? tm.end : tm.start + len; } });
+      if (ds.length && hit.length) { const keep = hit[0]; classes = classes.filter(c => c.name !== name); ds.forEach(d => classes.push({ ...keep, id: nextId++, day: d })); }
+      flash(classes.filter(c => c.name === name));
+      return say(`${cap(name)} moved${tm ? " to " + fmt(tm.start) : ""}${ds.length ? " on " + ds.map(d => cap(DAYS[d])).join(" + ") : ""}. You're welcome.`);
+    }
+    if (/^(clear|clear all|wipe)$/.test(text)) { classes = []; return say("Wiped. Blank week. Enjoy it while it lasts."); }
+    if (/(what'?s|whats)\s+(tomorrow|today)/.test(text)) {
+      const d = (+document.getElementById("day").value + (text.includes("tomorrow") ? 1 : 0)) % 7, list = byDay(d);
+      return say(list.length ? `${cap(DAYS[d])}: ` + list.map(c => `${cap(c.name)} ${fmt(c.start)}`).join(", ") + "." : `${cap(DAYS[d])}: nothing. Lucky.`);
+    }
+    // add: "<subject> <days> <time range>"
+    const tm = times(text), words = text.split(" "), ds = daysIn(words);
+    if (!tm || !ds.length) return say(`Say it like: math mon wed 8 to 9:30. I'm smart, not psychic.`);
+    const nameWords = []; for (const w of words) { if (DAY_WORDS[w] || /^\d/.test(w) || ["to", "-", "at", "on", "and", "until", "till", "from", "every"].includes(w)) break; nameWords.push(w); }
+    const name = nameWords.join(" ").toUpperCase();
+    if (!name) return say("Which subject? Put the name first: math mon 8 to 9.");
+    const added = ds.map(d => ({ id: nextId++, name, day: d, start: tm.start, end: tm.end }));
+    const clash = added.map(a => classes.find(c => c.day === a.day && c.start < a.end && a.start < c.end && c.name !== name)).find(Boolean);
+    classes = classes.filter(c => !(c.name === name && ds.includes(c.day))).concat(added);
+    flash(added);
+    say(`${cap(name)}, ${ds.map(d => cap(DAYS[d])).join(" + ")}, ${fmt(tm.start)}–${fmt(tm.end)}. Got it.` +
+      (clash ? ` That clashes with ${cap(clash.name)} on ${cap(DAYS[clash.day])}. Fix it or suffer.` : " Don't be late."));
+  }
+  function say(t) { reply = t; blink(); render(); }
+  function flash(list) { list.forEach(c => flashId.add(c.id)); setTimeout(() => { list.forEach(c => flashId.delete(c.id)); render(); }, 170); }
+  function blink() { const h = phone.querySelector(".head"); if (!h) return; h.classList.add("blink"); setTimeout(() => h.classList.remove("blink"), 83); }
+
+  // ---------- chat mode ----------
+  const SAMPLES = ["math mon wed 8 to 9:30", "physics tue thu 10:30-12", "chem fri 1-2:30", "move physics to 1pm", "remove english", "what's tomorrow"];
+  function renderChat() {
+    let list = "";
+    for (let d = 0; d < 7; d++) {
+      const l = byDay(d); if (!l.length) continue;
+      list += `<div class="day-h">${DAYS[d]}</div>` + l.map(c => `<div class="cl${flashId.has(c.id) ? " flash" : ""}"><span>${c.name}</span><small>${fmt(c.start)}–${fmt(c.end)}</small></div>`).join("");
+    }
+    if (!list) list = `<div class="day-h">NO CLASSES YET</div>`;
+    phone.innerHTML = `<div class="mode"><div class="her"><div class="head"></div><div class="say">${esc(reply)}</div></div>
+      <div class="list">${list}</div>
+      <div class="chips">${SAMPLES.map(s => `<button class="chip" type="button">${s}</button>`).join("")}</div>
+      <form class="chat"><input id="msg" autocomplete="off" placeholder="tell capri…" aria-label="Message to Capri"><button class="primary" type="submit">Send</button></form></div>`;
+    phone.querySelector(".chat").addEventListener("submit", e => { e.preventDefault(); const v = phone.querySelector("#msg").value; handle(v); focusMsg(); });
+    phone.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => { handle(c.textContent); }));
+  }
+  const focusMsg = () => { const i = phone.querySelector("#msg"); if (i) i.focus(); };
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+  // ---------- grid mode ----------
+  const G0 = 7 * 60, G1 = 18 * 60, PX = 1.0;              // 7:00–18:00, 1 px per minute
+  let sel = null, drag = null;
+  function renderGrid() {
+    const today = +document.getElementById("day").value, now = +document.getElementById("time").value;
+    let h = `<div class="mode"><div class="g-top"><div></div>${DAYS.slice(0, 5).map((d, i) => `<div class="${i === today ? "today" : ""}">${d[0]}${d[1].toLowerCase()}</div>`).join("")}</div>
+      <div class="g-body" id="gb"><div class="g-inner" id="gi" style="height:${(G1 - G0) * PX + 10}px">`;
+    for (let m = G0; m <= G1; m += 60) h += `<div class="g-hour" style="top:${(m - G0) * PX}px"><span>${m / 60}</span></div>`;
+    if (today < 5 && now >= G0 && now <= G1) h += `<div class="nowline" style="top:${(now - G0) * PX}px"></div>`;
+    h += `</div></div>`;
+    const c = classes.find(c => c.id === sel);
+    if (c) {
+      h += `<div class="sheet"><input id="nm" value="${esc(c.name)}" aria-label="Subject name"><div class="t">${DAYS[c.day]} ${fmt(c.start)}–${fmt(c.end)} · copy to:</div>
+        <div class="days">${DAYS.slice(0, 5).map((d, i) => `<button data-cp="${i}" aria-pressed="${classes.some(x => x.name === c.name && x.day === i && x.start === c.start)}">${d[0]}${d[1].toLowerCase()}</button>`).join("")}</div>
+        <div class="row"><button class="primary" id="done">Done</button><button id="del">Delete</button></div></div>`;
+    } else h += `<div class="g-hint">TAP EMPTY = ADD · DRAG = MOVE · EDGE = LONGER</div>`;
+    h += `</div>`;
+    const keepScroll = phone.querySelector("#gb")?.scrollTop;
+    phone.innerHTML = h;
+    const gb = phone.querySelector("#gb"), gi = phone.querySelector("#gi");
+    gb.scrollTop = keepScroll ?? (Math.max(0, (now - G0) * PX - 120));
+    const colW = () => (gi.clientWidth - 34) / 5;
+    for (const k of classes.filter(c => c.day < 5)) {
+      const el = document.createElement("div");
+      el.className = "blk" + (k.id === sel || flashId.has(k.id) ? " sel" : "");
+      el.style.cssText = `left:${34 + k.day * colW() + 2}px;width:${colW() - 4}px;top:${(k.start - G0) * PX}px;height:${(k.end - k.start) * PX}px`;
+      el.innerHTML = `<b>${esc(k.name)}</b><i>${fmt(k.start)}</i><div class="hdl"></div>`;
+      el.dataset.id = k.id; gi.appendChild(el);
+    }
+    // pointer: tap empty = add, drag block = move, drag handle = resize, tap block = select
+    gi.addEventListener("pointerdown", e => {
+      const r = gi.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      const blk = e.target.closest(".blk");
+      if (blk) {
+        const k = classes.find(c => c.id === +blk.dataset.id);
+        drag = { k, mode: e.target.classList.contains("hdl") ? "size" : "move", x0: x, y0: y, s0: k.start, e0: k.end, d0: k.day, moved: false };
+        gi.setPointerCapture(e.pointerId); return;
+      }
+      if (x < 34) return;
+      const day = Math.min(4, Math.floor((x - 34) / colW())), start = Math.round((y / PX + G0) / 15) * 15;
+      const k = { id: nextId++, name: "NEW CLASS", day, start: Math.min(start, G1 - 60), end: Math.min(start, G1 - 60) + 60 };
+      classes.push(k); sel = k.id; renderGrid(); const nm = phone.querySelector("#nm"); nm.select(); nm.focus();
+    });
+    gi.addEventListener("pointermove", e => {
+      if (!drag) return;
+      const r = gi.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, dy = (y - drag.y0) / PX;
+      if (Math.abs(x - drag.x0) + Math.abs(y - drag.y0) > 6) drag.moved = true;
+      if (!drag.moved) return;
+      const k = drag.k, snap = v => Math.round(v / 15) * 15;
+      if (drag.mode === "size") k.end = Math.max(k.start + 15, Math.min(G1, snap(drag.e0 + dy)));
+      else {
+        const len = drag.e0 - drag.s0; k.start = Math.max(G0, Math.min(G1 - len, snap(drag.s0 + dy))); k.end = k.start + len;
+        k.day = Math.max(0, Math.min(4, Math.floor((x - 34) / colW())));
+      }
+      const el = gi.querySelector(`[data-id="${k.id}"]`);
+      el.style.top = `${(k.start - G0) * PX}px`; el.style.height = `${(k.end - k.start) * PX}px`; el.style.left = `${34 + k.day * colW() + 2}px`;
+      el.querySelector("i").textContent = fmt(k.start);
+    });
+    const up = () => { if (!drag) return; const d = drag; drag = null; if (!d.moved) sel = sel === d.k.id ? null : d.k.id; renderGrid(); readout(); };
+    gi.addEventListener("pointerup", up); gi.addEventListener("pointercancel", up);
+    if (c) {
+      const nm = phone.querySelector("#nm");
+      nm.addEventListener("input", () => { const old = c.name, v = nm.value.toUpperCase() || "CLASS"; classes.forEach(x => { if (x.name === old && x.start === c.start) x.name = v; }); readout(); });
+      nm.addEventListener("keydown", e => { if (e.key === "Enter") { sel = null; renderGrid(); } });
+      phone.querySelectorAll("[data-cp]").forEach(b => b.addEventListener("click", () => {
+        const d = +b.dataset.cp, twin = classes.find(x => x.name === c.name && x.day === d && x.start === c.start);
+        if (twin && twin.id !== c.id) classes = classes.filter(x => x !== twin);
+        else if (!twin) classes.push({ ...c, id: nextId++, day: d });
+        renderGrid(); readout();
+      }));
+      phone.querySelector("#done").addEventListener("click", () => { sel = null; renderGrid(); });
+      phone.querySelector("#del").addEventListener("click", () => { classes = classes.filter(x => x.id !== c.id); sel = null; renderGrid(); readout(); });
+    }
+  }
+
+  // ---------- readout (what the scan will say) ----------
+  function readout() {
+    const d = +document.getElementById("day").value, t = +document.getElementById("time").value;
+    document.getElementById("tout").textContent = fmt(t);
+    const now = byDay(d).find(c => c.start <= t && t < c.end);
+    const rn = document.getElementById("r-now"), rx = document.getElementById("r-next");
+    if (now) { const left = now.end - t; rn.innerHTML = `${esc(now.name)}<small>ENDS IN ${left} MIN</small>`; rn.className = "val" + (left <= 5 ? " bad" : ""); }
+    else { rn.innerHTML = "FREE"; rn.className = "val"; }
+    let nx = byDay(d).find(c => c.start > t), when = "";
+    if (nx) { const inMin = nx.start - t; when = inMin >= 60 ? `IN ${Math.floor(inMin / 60)} H ${inMin % 60} M` : `IN ${inMin} MIN`; rx.className = "val" + (inMin <= 10 ? " bad" : ""); }
+    else {
+      for (let k = 1; k <= 7 && !nx; k++) { const l = byDay((d + k) % 7); if (l.length) { nx = l[0]; when = k === 1 ? "TOMORROW" : DAYS[(d + k) % 7]; } }
+      rx.className = "val";
+    }
+    rx.innerHTML = nx ? `${esc(nx.name)} ${fmt(nx.start)}<small>${when}</small>` : "NONE";
+  }
+
+  function render() { mode === "chat" ? renderChat() : renderGrid(); readout(); }
+  document.querySelectorAll("[data-m]").forEach(b => b.addEventListener("click", () => {
+    mode = b.dataset.m; sel = null; document.querySelectorAll("[data-m]").forEach(x => x.setAttribute("aria-pressed", x === b)); render();
+  }));
+  document.getElementById("day").addEventListener("input", render);
+  document.getElementById("time").addEventListener("input", () => { readout(); if (mode === "grid") { const l = phone.querySelector(".nowline"); if (l) l.style.top = `${(+document.getElementById("time").value - G0) * PX}px`; } });
+  render();
+})();
+</script>
