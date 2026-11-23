@@ -1,7 +1,11 @@
 package io.github.kurtking514_byte.capricorn
 
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.LauncherApps
+import android.os.BatteryManager
 import android.os.Bundle
 import android.os.UserHandle
 import android.widget.Toast
@@ -11,6 +15,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -24,14 +29,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import io.github.kurtking514_byte.capricorn.capri.CapriBrain
 import io.github.kurtking514_byte.capricorn.data.AppEntry
 import io.github.kurtking514_byte.capricorn.data.AppRepository
 import io.github.kurtking514_byte.capricorn.data.Prefs
+import io.github.kurtking514_byte.capricorn.overlay.CapriNotifListener
 import io.github.kurtking514_byte.capricorn.ui.AppDrawer
 import io.github.kurtking514_byte.capricorn.ui.BootOverlay
 import io.github.kurtking514_byte.capricorn.ui.CapriSkin
+import io.github.kurtking514_byte.capricorn.ui.CapriTime
 import io.github.kurtking514_byte.capricorn.ui.HomeScreen
 import io.github.kurtking514_byte.capricorn.ui.theme.CapriTheme
 import kotlinx.coroutines.Job
@@ -48,6 +57,7 @@ class MainActivity : ComponentActivity() {
     private var drawerOpen by mutableStateOf(false)
     private var showBoot by mutableStateOf(true)
     private var resumeTick by mutableIntStateOf(0)
+    private var commandId by mutableIntStateOf(0)
     private var loadJob: Job? = null
 
     private lateinit var brain: CapriBrain
@@ -58,9 +68,51 @@ class MainActivity : ComponentActivity() {
     private var skin: CapriSkin? = null
 
     private fun say(line: String) {
+        if (brain.mood == "reboot") {       // "boot" chat command: play the boot again
+            showBoot = true
+            brain.consumeActed()
+            return
+        }
         capriLine = line
         mood = brain.mood
         lineId++
+        if (brain.consumeActed()) commandId++     // C3 red hit
+    }
+
+    /** C5: a phone reaction. Only while home is on screen and the boot is done; returns true if she said it. */
+    private fun react(line: () -> String): Boolean {
+        if (showBoot || !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return false
+        CapriTime.wake()
+        say(line())
+        return true
+    }
+
+    // C5: charger plugged in → smug; battery at LOW_BATTERY% or less (not charging) → annoyed, once.
+    private var wasPlugged: Boolean? = null
+    private var lowWarned = false
+    private val batteryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
+            val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+            val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100).coerceAtLeast(1)
+            val pct = if (level < 0) -1 else level * 100 / scale
+            val before = wasPlugged
+            wasPlugged = plugged
+            if (before == false && plugged) react { brain.charging() }
+            when {
+                plugged || pct > LOW_BATTERY + 5 -> lowWarned = false
+                pct in 0..LOW_BATTERY && !lowWarned -> lowWarned = react { brain.lowBattery(pct) }
+            }
+        }
+    }
+
+    // C5: new notification → she glances up and says who it's from (throttled).
+    private var lastNotif = 0L
+    private fun onNotification(pkg: String) {
+        val now = android.os.SystemClock.uptimeMillis()
+        if (now - lastNotif < NOTIF_GAP_MS) return
+        val label = apps.firstOrNull { it.packageName == pkg }?.label
+        if (react { brain.notification(label) }) lastNotif = now
     }
 
     // Refresh the app list when apps are installed, removed or updated.
@@ -87,6 +139,9 @@ class MainActivity : ComponentActivity() {
         dockKeys = prefs.dock()
         launchCounts = prefs.launchCounts()
         getSystemService(LauncherApps::class.java).registerCallback(packageCallback)
+        ContextCompat.registerReceiver(
+            this, batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         reloadApps()
 
         setContent {
@@ -113,8 +168,15 @@ class MainActivity : ComponentActivity() {
                         lineId = lineId,
                         mood = mood,
                         resumeTick = resumeTick,
-                        onSubmit = { say(brain.respond(it, apps, ::launchApp) { drawerOpen = true }) },
-                        onPoke = { say(brain.poke()) },
+                        commandId = commandId,
+                        onSubmit = { say(brain.respond(it, apps, ::launchSoon) { drawerOpen = true }) },
+                        onPoke = { held ->
+                            say(when {
+                                CapriTime.wake() -> brain.wakeUp()      // C4: she was dozing
+                                held -> brain.hold()
+                                else -> brain.poke()
+                            })
+                        },
                         onOpenDrawer = { drawerOpen = true },
                         onLaunch = { launchApp(it) },
                         onToggleDock = ::toggleDock,
@@ -135,7 +197,7 @@ class MainActivity : ComponentActivity() {
                             onClose = { drawerOpen = false },
                         )
                     }
-                    AnimatedVisibility(visible = showBoot, enter = fadeIn(), exit = fadeOut(tween(350))) {
+                    AnimatedVisibility(visible = showBoot, enter = EnterTransition.None, exit = fadeOut(tween(250))) {
                         BootOverlay(skin = skin, onDone = {
                             if (showBoot) {
                                 showBoot = false
@@ -151,6 +213,12 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         resumeTick++
+        CapriNotifListener.onNew = { pkg -> runOnUiThread { onNotification(pkg) } }
+    }
+
+    override fun onPause() {
+        CapriNotifListener.onNew = null
+        super.onPause()
     }
 
     // Pressing the Home button while Capri is already open: go back to the home screen.
@@ -161,12 +229,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         getSystemService(LauncherApps::class.java).unregisterCallback(packageCallback)
+        unregisterReceiver(batteryReceiver)
         super.onDestroy()
     }
 
     private fun reloadApps() {
         loadJob?.cancel()
         loadJob = lifecycleScope.launch { apps = repo.loadApps() }
+    }
+
+    /** Opens an app from chat a moment later, so the red hit (C3) shows before the app covers it. */
+    private fun launchSoon(app: AppEntry): Boolean {
+        window.decorView.postDelayed({ launchApp(app) }, 180)
+        return true
     }
 
     private fun launchApp(app: AppEntry): Boolean = try {
@@ -200,3 +275,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+/** C5: she complains once when the battery drops to this percent (not charging). */
+private const val LOW_BATTERY = 15
+
+/** C5: at most one notification reaction this often. */
+private const val NOTIF_GAP_MS = 10_000L

@@ -83,18 +83,24 @@ Do steps B1–B4 in the **web preview only**; each step is one prompt and needs 
 Boot preview is its own small page: `preview/boot-lab.html`, published at https://claude.ai/artifact/DLCcXgzW7v2C52C94FDXWs
 (republish the same file path to update it). From B2 on it uses an original stand-in figure; the user's real sprites appear only in the app.
 - [ ] B1 (built 2026-11-17, waiting for the user's OK) Preview: remove confetti and the body zoom. Black screen, 3–5 hard red flashes at random times and in random shapes (full screen, slash, partial band)
-- [ ] B2 (built 2026-11-18, waiting for the user's OK; stand-in is a plain original mannequin) Preview: after the flashes she glitches in and brings her hand forward toward the screen (skin has no reach frame: in the app use an ALLOWED pose such as `idle_wave_raise` pushed toward the camera)
-- [ ] B3 Preview: red lightning bolt from her hand to the dock; pinned apps appear one by one where it hits
+- [ ] B2+B3 (rebuilt 2026-11-18, waiting for the user's OK) Preview: after the flashes she glitches in, **raises her hand up**, then **3–4 red lightning bolts at once strike down from the top of the screen** onto each pinned app, app by app in random order (like thunder hitting the ground); each slot flashes crimson, the app pops in and glitches. Opening flashes stay short (3–5 hits, 30–90 ms): the user does not want the boot longer. (User corrections: no sweep, no hand toward the camera, no fingers, arm must not stretch.) In the app use `idle_wave_raise`
 - [ ] B4 ~~Preview: background~~ → replaced by step 4.6 (the phone's own wallpaper). For now the boot just ends on the home screen as it is
-- [ ] B5 Port the approved boot into `ui/BootOverlay.kt` (and the background into `HomeScreen.kt`)
-- [ ] B6 User tests the new boot on the phone
+- [x] B5a (2026-11-18, compiles; not yet seen on the phone) `ui/BootOverlay.kt` rewritten: random flashes + glitch-through, she glitches in at her home spot, pose-glitch to `idle_wave_raise`, short hold. Old streak boot and the code-drawn boot are gone; with no skin only the flashes play
+- [x] B5b (2026-11-18, compiles; not yet seen on the phone) Lightning onto the dock: 3–4 bolts per pinned app from the top, app by app in random order; each dock slot flashes crimson, the app pops in and glitches. `ui/BootDock.kt` shares slot positions + strike times; dock slots use `Modifier.bootSlot(i)`; the boot's black stops above the dock during the strikes
+- [x] B5c Chat command `boot` replays the whole boot (the boot otherwise only plays when the app starts; pressing Home does NOT replay it)
+- [x] B5h The boot appears instantly (no fade-in: the fade hid the fast flashes when replayed with `boot`); each flash 0.05–0.09 s
+- [x] B5f Sync fix: bolts and slot flashes share one clock (`BootDock.time`, set by the boot every frame; `struck` holds exact scheduled hit times). First bolt lands exactly on the hit, others within the flash. Slot crimson flash is 0.07 s (was 0.04 s, too short to see)
+- [x] B5e The chatbox is struck by lightning (bolts spread along it), flashes crimson, pops in and glitches, then stays in place (`BootDock.CHAT`)
+- [x] B5g (2026-11-18, user was angry about this) **Chatbox and ALL pinned apps are struck at the SAME moment** — never stagger them or put the chatbox first. Boot sped up to about 1 s total (faster flashes, glitch-in 0.12 s, arm up 0.10 s, strike 0.04 s later)
+- [x] B5d With no pinned apps, the dock shows 4 empty "+" slots instead of the "long-press any app to pin it here" text (tap one = app list). They're real dock slots, so the lightning reveals them and they stay. (The boot's own drawn placeholders are now only a fallback.)
+- [ ] B6 User tests the new boot on the phone. NOTE 2026-11-18: Android Studio's Run was NOT installing new builds (phone still had the 17:12 build); check `adb shell dumpsys package io.github.kurtking514_byte.capricorn | grep lastUpdateTime` after installing
 
 ### Phase 2C — Make her feel alive (user picked these 2026-11-18; one step per prompt, ask before each)
-- [ ] C1 Follows your finger: touching the screen makes her look toward it (`idle_look_left` / `idle_look_right`)
-- [ ] C2 Poke reactions: 1 poke surprised, 3 quick pokes annoyed + arms crossed, long-press laughing
-- [ ] C3 Red flash on commands: crimson hit + pose glitch whenever she opens an app, sets an alarm, etc.
-- [ ] C4 Time of day: alert in the morning, sleepy at night, lies down and "sleeps" late until poked
-- [ ] C5 Phone reactions: charging excited, low battery annoyed, new notification she points at it
+- [x] C1 (2026-11-18, compiles; not seen on phone) Follows your finger: any touch on the home screen (`Modifier.trackGaze()` + `CapriGaze`) makes her look toward it for 1.5 s. Left 40% of screen → `idle_look_left`, right 40% → `idle_look_right`, middle → neutral. If the directions look swapped on the phone, swap them
+- [x] C2 (2026-11-18, compiles; not seen on phone) Poke reactions, allowed poses only: 1 poke → hand on hip smirk ("sass"), 2 quick pokes → shrug, 3+ quick pokes (within 1.5 s of each other) → arms crossed annoyed, press-and-hold → idle_smirk ("smug"). Each tier has its own original lines in `CapriBrain.poke()` / `hold()`
+- [x] C3 (2026-11-18, compiles; not seen on phone) Red hit on commands: when a chat reply actually does something (`CapriBrain.done()` → `consumeActed()` → `commandId`), the home screen shows full-screen crimson 70 ms, gap 40 ms, crimson slash 60 ms; her new pose glitches in. Apps opened from chat launch 180 ms later (`launchSoon`) so the hit is visible
+- [x] C4 (2026-11-18, compiles; not seen on phone) Time of day (`CapriTime` / `DayPeriod` in `ui/CapriSprite.kt`, checked once a minute): morning 5–10 brisk (idle timing ×0.7, sway ×1.1), day normal, evening 18–23 slower (×1.3, sway ×0.85), night 0–4 drowsy half-closed eyes (×1.6, sway ×0.6). At night, 25 s with no poke/chat → she dozes standing, eyes closed; a poke wakes her annoyed (`CapriBrain.wakeUp()`). No lying down
+- [x] C5 (2026-11-18, compiles; not seen on phone) Phone reactions, home screen only, after the boot: charger plugged in → smug smirk + line; battery 15% or lower (not charging) → arms crossed + line, once until it goes back above 20% or is plugged in; new notification → she looks toward the top (`idle_look_left`) and says which app it is from (never reads the text), at most one every 10 s. Notifications need Notification access: chat command `notifs` opens it (`overlay/CapriNotifListener.kt`). Any reaction wakes her if she was dozing
 
 ### Phase 3 — Commands & gestures
 - [ ] 3.1 Gestures on home Capri: double-tap screenshot, triple-tap lock
@@ -145,8 +151,6 @@ Making her feel alive:
 - She looks toward your finger when you touch the screen (`idle_look_left` / `idle_look_right`)
 - Red flash takeover whenever she runs a command (opening an app, alarm, screenshot)
 - Short glitch tear on her sprite when she changes pose
-- Sleeps at night (`recline_sleepy`), wakes up annoyed when you poke her
-- Reacts to charging (excited), low battery (annoyed), new notification (points at it)
 - Phone buzz (haptics) in time with the red flashes
 - Optional sound effects with an on/off switch (boot crackle, flash hits)
 - Short re-entry animation when you come back home from an app (not the full boot)

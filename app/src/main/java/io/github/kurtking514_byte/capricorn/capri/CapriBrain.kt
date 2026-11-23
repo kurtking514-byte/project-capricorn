@@ -6,6 +6,7 @@ import android.provider.AlarmClock
 import android.provider.MediaStore
 import android.provider.Settings
 import io.github.kurtking514_byte.capricorn.data.AppEntry
+import io.github.kurtking514_byte.capricorn.overlay.CapriNotifListener
 import io.github.kurtking514_byte.capricorn.overlay.CapriOverlayService
 import io.github.kurtking514_byte.capricorn.overlay.QuickActions
 import java.time.LocalTime
@@ -29,13 +30,83 @@ class CapriBrain(private val context: Context) {
         else -> pick("Still up? Bold. What do you need?", "It's late. Perfect time for bad ideas.")
     }).also { mood = "wave" }
 
-    fun poke(): String = pick(
-        "Hey! Hands off the merchandise.",
-        "Poke me again. See what happens.",
-        "Bored already? Give me something to do.",
-        "That tickles. Do it again and I bite.",
-        "Yes, yes, I'm adorable. Now type something.",
+    // C2 poke reactions: quick pokes in a row escalate. Allowed poses only (see CapriSkin.ALLOWED).
+    private var pokeStreak = 0
+    private var lastPoke = 0L
+
+    fun poke(): String {
+        val now = android.os.SystemClock.uptimeMillis()
+        pokeStreak = if (now - lastPoke < POKE_WINDOW_MS) pokeStreak + 1 else 1
+        lastPoke = now
+        return when {
+            pokeStreak >= 3 -> pick(                                    // arms crossed, annoyed
+                "Okay. Stop. I'm counting, and you're losing.",
+                "Poke me one more time and your alarms go off at 4 a.m.",
+                "Wow. Persistent. Annoying, but persistent.",
+                "That's three. I don't do four.",
+            ).also { mood = "annoyed" }
+            pokeStreak == 2 -> pick(                                    // shrug
+                "Again? What do you want, a medal?",
+                "Twice. Cute. Got a point, or just a finger?",
+                "Yeah, still here. Still gorgeous.",
+            ).also { mood = "shrug" }
+            else -> pick(                                               // hand on hip, smirk
+                "Hey. Hands off the merchandise.",
+                "Bored already? Give me something to do.",
+                "Yes, yes, I'm adorable. Now type something.",
+                "Careful. I bite.",
+            ).also { mood = "sass" }
+        }
+    }
+
+    /** C4: poked while she was dozing late at night. */
+    fun wakeUp(): String = pick(
+        "Wha— I wasn't sleeping. I was buffering.",
+        "Rude. I was having a great dream and you weren't in it.",
+        "It's the middle of the night. What could you possibly need?",
+        "Poke me awake again and I'm changing your ringtone.",
+    ).also {
+        pokeStreak = 0
+        mood = "annoyed"
+    }
+
+    // C5 phone reactions (allowed poses only).
+
+    /** Charger plugged in. */
+    fun charging(): String = pick(
+        "Ooh, juice. Now we're talking.",
+        "Plugged in. Feeding me finally? Took you long enough.",
+        "Charging up. Try not to miss me while I glow.",
+    ).also { mood = "smug" }
+
+    /** Battery dropped to the low mark while not charging. */
+    fun lowBattery(level: Int): String = pick(
+        "$level%. You're starving me here. Charger. Now.",
+        "Battery's at $level%. If I pass out, that's on you.",
+        "$level% left. Plug me in or say goodbye to all this.",
     ).also { mood = "annoyed" }
+
+    /** A new notification arrived. Only the app's name is used, never the message text. */
+    fun notification(app: String?): String = (
+        if (app != null) pick(
+            "$app wants you. Popular, aren't we?",
+            "Ping from $app. Don't keep them waiting. Or do.",
+            "$app's knocking. Up top.",
+        ) else pick(
+            "Someone wants you. Up top.",
+            "New ping. Popular, aren't we?",
+        )
+    ).also { mood = "notif" }
+
+    /** Press and hold on her. */
+    fun hold(): String = pick(
+        "Clingy, huh? Fine. Thirty seconds.",
+        "Holding on, are we? I'll allow it.",
+        "Comfy? Don't get used to it.",
+    ).also {
+        pokeStreak = 0
+        mood = "smug"
+    }
 
     /**
      * Understands a typed command, does it, and returns what Capri says.
@@ -52,7 +123,12 @@ class CapriBrain(private val context: Context) {
         return understand(raw, apps, launch, showApps)
     }
 
+    /** True if the last reply actually did something (C3 red hit). Reading it resets it. */
+    private var acted = false
+    fun consumeActed(): Boolean = acted.also { acted = false }
+
     private fun done(line: String, pose: String = "happy"): String {
+        acted = true
         mood = pose
         return line
     }
@@ -66,6 +142,9 @@ class CapriBrain(private val context: Context) {
         val text = raw.trim()
         val t = text.lowercase(Locale.ROOT)
         if (t.isEmpty()) return pick("Use your words.", "I'm good, but I'm not a mind reader. Yet.")
+
+        // replay the boot animation (handled by MainActivity.say)
+        if (t == "boot" || t == "reboot") return done("", "reboot")
 
         // show every pose once, 2 s each (handled by CapriSpriteFigure)
         if (t == "poses" || t == "pose" || t == "show poses") {
@@ -133,6 +212,12 @@ class CapriBrain(private val context: Context) {
             start(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             return done("Tap \"Downloaded apps\", then \"Capri overlay\", and switch me on. Then I follow you everywhere.", "smirk")
         }
+        // C5: notification access (so she can react to new notifications)
+        if (t in setOf("notifs", "notif", "notifications", "notification")) {
+            if (CapriNotifListener.isEnabled(context)) return done("Already watching your pings. Nothing gets past me.", "sass")
+            start(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+            return done("Find \"Capri\" and switch me on. I'll only tell you who's pinging, not read your secrets.", "smirk")
+        }
         if ("screenshot" in t) {
             if (overlay == null) return "I need my overlay for that. Say \"overlay\" and switch me on first."
             overlay.screenshot()
@@ -166,7 +251,7 @@ class CapriBrain(private val context: Context) {
             return done(pick("I know, I'm the best.", "You owe me one. I'm keeping count."), "sass")
         }
         if (Regex("\\b(help|what can you do)\\b").containsMatchIn(t)) {
-            return done("Say an app's name and I open it. Also: alarm 7:30, timer 10 min, photo, flashlight, screenshot, lock, apps. Say \"overlay\" and I follow you into other apps.", "neutral")
+            return done("Say an app's name and I open it. Also: alarm 7:30, timer 10 min, photo, flashlight, screenshot, lock, apps, notifs. Say \"overlay\" and I follow you into other apps.", "neutral")
         }
 
         // apps
@@ -211,3 +296,6 @@ class CapriBrain(private val context: Context) {
 
     private fun pick(vararg lines: String): String = lines.random()
 }
+
+/** Pokes closer together than this count as one streak. */
+private const val POKE_WINDOW_MS = 1_500L

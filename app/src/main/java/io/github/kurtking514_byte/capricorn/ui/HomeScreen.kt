@@ -9,6 +9,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -92,8 +94,9 @@ fun HomeScreen(
     lineId: Int,
     mood: String,
     resumeTick: Int,
+    commandId: Int,                 // goes up each time she runs a command (red hit)
     onSubmit: (String) -> Unit,
-    onPoke: () -> Unit,
+    onPoke: (held: Boolean) -> Unit,
     onOpenDrawer: () -> Unit,
     onLaunch: (AppEntry) -> Unit,
     onToggleDock: (AppEntry) -> Unit,
@@ -135,6 +138,15 @@ fun HomeScreen(
             flash.animateTo(0f, tween(240))
         }
     }
+    // C3: 0 = nothing, 1 = full-screen crimson, 2 = crimson slash
+    var commandHit by remember { mutableIntStateOf(0) }
+    LaunchedEffect(commandId) {
+        if (commandId == 0) return@LaunchedEffect
+        commandHit = 1; delay(70)
+        commandHit = 0; delay(40)
+        commandHit = 2; delay(60)
+        commandHit = 0
+    }
 
     val suggestions = remember(query, apps) {
         val q = query.trim().replace(Regex("^(open|launch|start|run)\\s+", RegexOption.IGNORE_CASE), "")
@@ -154,6 +166,7 @@ fun HomeScreen(
         Modifier
             .fillMaxSize()
             .background(CapriColors.Black)
+            .trackGaze()                                 // she looks toward wherever you touch
             .pointerInput(Unit) {
                 var dragged = 0f
                 detectVerticalDragGestures(
@@ -240,9 +253,12 @@ fun HomeScreen(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
+                    .bootSlot(BootDock.CHAT)                 // boot lightning reveals the chatbox
                     .graphicsLayer {
-                        translationY = 90.dp.toPx() * (1f - enter.value)
-                        alpha = enter.value.coerceIn(0f, 1f)
+                        // struck in the boot: already in place; otherwise it slides in
+                        val struck = BootDock.CHAT in BootDock.struck
+                        translationY = if (struck) 0f else 90.dp.toPx() * (1f - enter.value)
+                        alpha = if (struck) 1f else enter.value.coerceIn(0f, 1f)
                     },
             )
 
@@ -254,7 +270,7 @@ fun HomeScreen(
                         alpha = enter.value.coerceIn(0f, 1f)
                     }
                 ) {
-                    Dock(dockApps, onLaunch, onToggleDock, onAppInfo)
+                    Dock(dockApps, onLaunch, onToggleDock, onAppInfo, onEmptySlot = openDrawer)
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -262,6 +278,20 @@ fun HomeScreen(
 
         // Crimson flash whenever she does or says something (no touch handling, so it never blocks taps).
         Canvas(Modifier.fillMaxSize()) {
+            // C3: hard red hit when she actually does something (full screen, then a slash)
+            when (commandHit) {
+                1 -> drawRect(CapriColors.Pink)
+                2 -> {
+                    val cy = size.height * 0.45f
+                    val band = size.height * 0.12f
+                    val dx = size.width
+                    val slash = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(-dx, cy + band * 1.6f); lineTo(size.width + dx, cy - band * 2.4f)
+                        lineTo(size.width + dx, cy - band * 1.4f); lineTo(-dx, cy + band * 2.6f); close()
+                    }
+                    drawPath(slash, CapriColors.Pink)
+                }
+            }
             val a = flash.value
             if (a > 0.004f) {
                 drawRect(CapriColors.Pink, alpha = a)
@@ -394,7 +424,7 @@ private fun CapriStage(
     moodId: Int,
     enter: () -> Float,
     pop: () -> Float,
-    onPoke: () -> Unit,
+    onPoke: (held: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val poke by rememberUpdatedState(onPoke)
@@ -441,7 +471,7 @@ private fun CapriStage(
                     .fillMaxSize()
                     .padding(top = with(density) { bubbleHeight.toDp() } + 8.dp)
                     .graphicsLayer { alpha = enter() }
-                    .pointerInput(Unit) { detectTapGestures(onTap = { poke() }) }
+                    .pointerInput(Unit) { detectTapGestures(onTap = { poke(false) }, onLongPress = { poke(true) }) }
             ) {
                 val u = minOf(size.height / 1.22f, size.width / 1.28f)
                 drawCapriBody(
@@ -514,14 +544,22 @@ private fun SpeechBubble(text: String, modifier: Modifier = Modifier) {
     }
 }
 
+/** Empty slots shown in the dock when no apps are pinned. */
+private const val EMPTY_SLOTS = 4
+
 @Composable
 private fun Dock(
     apps: List<AppEntry>,
     onLaunch: (AppEntry) -> Unit,
     onToggleDock: (AppEntry) -> Unit,
     onAppInfo: (AppEntry) -> Unit,
+    onEmptySlot: () -> Unit,
 ) {
     val shape = CutCornerShape(topStart = 12.dp, bottomEnd = 12.dp)
+    LaunchedEffect(apps.size) {                         // forget slots that no longer exist
+        val used = if (apps.isEmpty()) EMPTY_SLOTS else apps.size
+        BootDock.slots.keys.filter { it >= used && it != BootDock.CHAT }.forEach { BootDock.slots.remove(it) }
+    }
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -531,27 +569,41 @@ private fun Dock(
             .padding(vertical = 6.dp, horizontal = 8.dp),
     ) {
         if (apps.isEmpty()) {
-            Text(
-                "long-press any app to pin it here",
-                color = CapriColors.Dim,
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(vertical = 18.dp),
-            )
+            // Nothing pinned: 4 empty slots (the boot's lightning reveals them). Tap one to pick an app.
+            val slotShape = CutCornerShape(topStart = 8.dp, bottomEnd = 8.dp)
+            Row(
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+            ) {
+                repeat(EMPTY_SLOTS) { i ->
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .bootSlot(i)
+                            .size(48.dp)
+                            .border(1.dp, CapriColors.Cyan.copy(alpha = 0.35f), slotShape)
+                            .clickable(onClick = onEmptySlot),
+                    ) {
+                        Text("+", color = CapriColors.Dim, style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+            }
         } else {
             Row(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                apps.forEach { app ->
-                    AppItem(
-                        app = app,
-                        inDock = true,
-                        showLabel = false,
-                        onLaunch = onLaunch,
-                        onToggleDock = onToggleDock,
-                        onAppInfo = onAppInfo,
-                    )
+                apps.forEachIndexed { i, app ->
+                    Box(Modifier.bootSlot(i)) {          // boot lightning reveals each slot
+                        AppItem(
+                            app = app,
+                            inDock = true,
+                            showLabel = false,
+                            onLaunch = onLaunch,
+                            onToggleDock = onToggleDock,
+                            onAppInfo = onAppInfo,
+                        )
+                    }
                 }
             }
         }

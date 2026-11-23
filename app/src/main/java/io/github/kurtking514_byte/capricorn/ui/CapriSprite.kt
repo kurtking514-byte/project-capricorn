@@ -26,6 +26,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +45,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
@@ -162,6 +164,8 @@ private fun moodFrame(mood: String): String = when (mood) {
     "annoyed" -> "arms_crossed_annoyed"
     "skeptical" -> "idle_thinking"
     "shrug" -> "idle_shrug"
+    "smug" -> "idle_smirk"
+    "notif" -> "idle_look_left"      // C5: glances up toward the notification icons
     else -> "neutral"
 }
 
@@ -279,7 +283,7 @@ fun CapriSpriteFigure(
     moodId: Int,
     topInset: Float,
     onHeadTop: (Float) -> Unit,
-    onPoke: () -> Unit,
+    onPoke: (held: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val poke by rememberUpdatedState(onPoke)
@@ -303,7 +307,7 @@ fun CapriSpriteFigure(
                     val ease = (dt * 6f).coerceAtMost(1f)
                     tilt[0] += (tiltTarget[0] - tilt[0]) * ease
                     tilt[1] += (tiltTarget[1] - tilt[1]) * ease
-                    time += dt
+                    time += dt * CapriTime.period.sway     // C4: slower sway in the evening/night
                 }
             }
         }
@@ -341,12 +345,14 @@ fun CapriSpriteFigure(
         delay(4_500)
         current = "neutral"
         // Left alone: every so often, do something for a while, then get back up.
+        // C4: brisk in the morning, slower in the evening, slowest late at night.
         while (activities.isNotEmpty()) {
-            delay(Random.nextLong(4_000L, 8_000L))
+            delay((Random.nextLong(4_000L, 8_000L) * CapriTime.period.pace).toLong())
+            if (CapriTime.dozing) continue                 // asleep on her feet: no activities
             activity = (activities - lastActivity).randomOrNull() ?: activities.random()
             lastActivity = activity
             kick(0.4f)
-            delay(Random.nextLong(6_000L, 10_000L))
+            delay((Random.nextLong(6_000L, 10_000L) * CapriTime.period.pace).toLong())
             activity = null
             kick(0.4f)
         }
@@ -370,13 +376,47 @@ fun CapriSpriteFigure(
         }
     }
 
+    // C1: she looks toward wherever you touch the screen, for a moment
+    var looking by remember { mutableStateOf(false) }
+    LaunchedEffect(CapriGaze.at) {
+        if (CapriGaze.at == 0L) return@LaunchedEffect
+        looking = true
+        delay(GAZE_MS)
+        looking = false
+    }
+
+    // C4: keep the time-of-day period current (checked once a minute).
+    LaunchedEffect(Unit) {
+        while (true) {
+            CapriTime.refresh()
+            delay(60_000)
+        }
+    }
+    // Late at night, if nobody talks to or pokes her for a while, she dozes off standing up.
+    val late = CapriTime.period == DayPeriod.NIGHT
+    LaunchedEffect(moodId, late) {
+        CapriTime.dozing = false
+        if (!late) return@LaunchedEffect
+        delay(DOZE_AFTER_MS)
+        activity = null
+        CapriTime.dozing = true
+    }
+    val dozing = CapriTime.dozing
+
     val doing = activity
     val name = when {
+        dozing && !speaking -> "idle_blink_closed"
         speaking && current in setOf("neutral", "happy", "smirk", "wave") && doing == null -> TALK[step % TALK.size]
+        looking && !speaking -> when {
+            CapriGaze.x < 0.4f -> "idle_look_left"
+            CapriGaze.x > 0.6f -> "idle_look_right"
+            else -> "neutral"
+        }
         current == "wave" -> if ((step / 2) % 2 == 0) "idle_wave_a" else "idle_wave_b"
         current == "neutral" && doing != null -> doing
         current == "neutral" && blink == 2 -> "idle_blink_closed"
         current == "neutral" && blink == 1 -> "idle_blink_half"
+        current == "neutral" && late -> "idle_blink_half"            // drowsy, heavy eyelids
         else -> moodFrame(current)
     }.let { if (skin.has(it)) it else "neutral" }
 
@@ -416,10 +456,16 @@ fun CapriSpriteFigure(
         modifier
             .onSizeChanged { canvas = it }
             .pointerInput(Unit) {
-                detectTapGestures(onTap = {
-                    kick(1f)
-                    poke()
-                })
+                detectTapGestures(
+                    onTap = {
+                        kick(1f)
+                        poke(false)
+                    },
+                    onLongPress = {
+                        kick(0.6f)
+                        poke(true)
+                    },
+                )
             }
     ) {
         val t = time
@@ -445,7 +491,7 @@ fun CapriSpriteFigure(
  * sideways, a crimson copy sits a few px to one side, and a few slices drop out.
  * The slice pattern re-rolls halfway, so she tears twice.
  */
-private fun DrawScope.drawPoseGlitch(
+internal fun DrawScope.drawPoseGlitch(
     painter: CapriMeshPainter, from: Bitmap, to: Bitmap, p: Float, seed: Int,
     t: Float, tilt: FloatArray, bounce: Float, topInset: Float,
 ) {
@@ -474,5 +520,59 @@ private fun DrawScope.drawPoseGlitch(
         }
         y += sliceH
         i++
+    }
+}
+
+/** Where the user last touched the home screen (0..1 across) and when (uptime ms). */
+object CapriGaze {
+    var x by mutableFloatStateOf(0.5f)
+    var at by mutableLongStateOf(0L)
+}
+
+/** How long she keeps looking toward a touch, ms. */
+internal const val GAZE_MS = 1_500L
+
+/** C4: time of day. [pace] stretches her idle timing, [sway] scales the speed of her motion. */
+enum class DayPeriod(val pace: Float, val sway: Float) {
+    MORNING(0.7f, 1.1f),   // 5:00–10:59, brisk
+    DAY(1.0f, 1.0f),       // 11:00–17:59
+    EVENING(1.3f, 0.85f),  // 18:00–23:59, slower
+    NIGHT(1.6f, 0.6f),     // 0:00–4:59, drowsy, dozes off when left alone
+}
+
+object CapriTime {
+    var period by mutableStateOf(now())
+        private set
+
+    /** True while she's dozing (late night, left alone). A poke wakes her up, annoyed. */
+    var dozing by mutableStateOf(false)
+
+    fun refresh() { period = now() }
+
+    /** Wakes her if she was dozing; returns true if she was. */
+    fun wake(): Boolean = dozing.also { dozing = false }
+
+    private fun now(): DayPeriod = when (java.time.LocalTime.now().hour) {
+        in 5..10 -> DayPeriod.MORNING
+        in 11..17 -> DayPeriod.DAY
+        in 18..23 -> DayPeriod.EVENING
+        else -> DayPeriod.NIGHT
+    }
+}
+
+/** Late at night she dozes off after this long with no pokes or chat. */
+private const val DOZE_AFTER_MS = 25_000L
+
+/** Put on the home screen root: notes every touch without taking it away from anything else. */
+fun Modifier.trackGaze(): Modifier = pointerInput(Unit) {
+    awaitPointerEventScope {
+        while (true) {
+            val e = awaitPointerEvent(PointerEventPass.Initial)
+            val c = e.changes.firstOrNull() ?: continue
+            if (c.pressed && !c.previousPressed) {
+                CapriGaze.x = (c.position.x / size.width).coerceIn(0f, 1f)
+                CapriGaze.at = android.os.SystemClock.uptimeMillis()
+            }
+        }
     }
 }
