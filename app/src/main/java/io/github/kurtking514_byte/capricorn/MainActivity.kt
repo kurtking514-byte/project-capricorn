@@ -41,6 +41,8 @@ import io.github.kurtking514_byte.capricorn.overlay.CapriNotifListener
 import io.github.kurtking514_byte.capricorn.overlay.CapriOverlayService
 import io.github.kurtking514_byte.capricorn.ui.DRAWER_CLOSE_MS
 import io.github.kurtking514_byte.capricorn.ui.AppDrawer
+import io.github.kurtking514_byte.capricorn.ui.StatusScan
+import io.github.kurtking514_byte.capricorn.capri.PhoneStatus
 import io.github.kurtking514_byte.capricorn.ui.AppGrab
 import io.github.kurtking514_byte.capricorn.ui.CapriAway
 import io.github.kurtking514_byte.capricorn.ui.GrabAction
@@ -202,6 +204,11 @@ class MainActivity : ComponentActivity() {
                         onLetter = ::onLetter,
                         onDoubleTapEmpty = ::lockFromHome,
                         onTwoFingerDown = { say(brain.torch()) },
+                        onTwoFingerHold = {
+                            val st = PhoneStatus.read(this@MainActivity)
+                            StatusScan.show(st)
+                            say(brain.scan(st))
+                        },
                         onPickLetterApp = {
                             letterPick = null
                             say(brain.letterPicked(it.label))

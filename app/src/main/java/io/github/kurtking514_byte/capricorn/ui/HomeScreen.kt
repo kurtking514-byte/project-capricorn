@@ -108,6 +108,7 @@ fun HomeScreen(
     onPickLetterApp: (AppEntry) -> Unit,
     onDoubleTapEmpty: () -> Unit,                   // 3.6: lock
     onTwoFingerDown: () -> Unit,                    // 3.7: flashlight
+    onTwoFingerHold: () -> Unit,                    // 3.9a: status scan
 ) {
     val openDrawer by rememberUpdatedState(onOpenDrawer)
     val keyboard = LocalSoftwareKeyboardController.current
@@ -185,7 +186,7 @@ fun HomeScreen(
             .trackGaze()                                 // she looks toward wherever you touch
             // straight swipe up = app list; any other one-finger stroke on the empty screen = a letter (3.5)
             .homeStrokes(onDrawer = { openDrawer() }, onLetter = onLetter, onDoubleTap = onDoubleTapEmpty,
-                onTwoFingerDown = onTwoFingerDown)
+                onTwoFingerDown = onTwoFingerDown, onTwoFingerHold = onTwoFingerHold)
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -313,6 +314,7 @@ fun HomeScreen(
         // 3.3: the app you drag, the app she holds + her options menu, the pin lightning
         GrabLayer(inDock = { it.key in dockKeys }, onAction = onGrabAction)
         LetterTrail()                                   // 3.5: the lightning under your finger
+        StatusScanPanel()                               // 3.9a: two-finger hold readout
 
         // Crimson flash whenever she does or says something (no touch handling, so it never blocks taps).
         Canvas(Modifier.fillMaxSize()) {

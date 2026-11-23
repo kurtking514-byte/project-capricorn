@@ -79,7 +79,7 @@ private val STRAND_FILL = Color(0xFF3A000D)
 private val STRAND_DIM = Color(0xFF22000A)
 private val EDGE_PURPLE = Color(0xFF37197B)
 /** Russo One (SIL Open Font License, see third_party/RussoOne-OFL.txt); user's pick for the fan. */
-private val FAN_FONT = FontFamily(Font(R.font.russo_one))
+internal val FAN_FONT = FontFamily(Font(R.font.russo_one))
 
 private class FanItem(
     val x: Float, val y: Float, val app: AppEntry? = null, val letter: String? = null,

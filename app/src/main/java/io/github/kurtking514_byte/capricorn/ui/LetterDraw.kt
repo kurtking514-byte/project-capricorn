@@ -66,6 +66,10 @@ object LetterDraw {
 /** 3.7: how far both fingers must move down. */
 private const val TWO_FINGER_DOWN_DP = 80
 
+/** 3.9a: two fingers held this long, moving less than [TWO_FINGER_STILL_DP], = status scan. */
+private const val TWO_FINGER_HOLD_MS = 500L
+private const val TWO_FINGER_STILL_DP = 16
+
 private const val FLASH_MS = 70L
 private const val BREAK_MS = 250L
 private val BREAK_BARS = floatArrayOf(0.9f, 0.55f, 0.25f)
@@ -78,6 +82,7 @@ private val BREAK_BARS = floatArrayOf(0.9f, 0.55f, 0.25f)
  */
 fun Modifier.homeStrokes(
     onDrawer: () -> Unit, onLetter: (Char?) -> Unit, onDoubleTap: () -> Unit, onTwoFingerDown: () -> Unit,
+    onTwoFingerHold: () -> Unit,
 ): Modifier = pointerInput(Unit) {
     // 3.6: two taps on the empty screen, close in time and place = double-tap
     var lastTapAt = 0L
@@ -96,14 +101,26 @@ fun Modifier.homeStrokes(
         val starts = mutableMapOf<PointerId, Offset>()
         val lasts = mutableMapOf<PointerId, Offset>()
         var twoFinger = false
+        var twoAt = 0L
+        var held = false                                               // 3.9a: the hold already fired
+        var holdMoved = false
         while (true) {
-            val ev = awaitPointerEvent()
+            val ev = if (twoFinger && !held && !holdMoved) {
+                val left = TWO_FINGER_HOLD_MS - (android.os.SystemClock.uptimeMillis() - twoAt)
+                if (left <= 0) null else withTimeoutOrNull(left) { awaitPointerEvent() }
+            } else awaitPointerEvent()
+            if (ev == null) {                                          // two fingers held still: status scan
+                held = true
+                onTwoFingerHold()
+                continue
+            }
             for (c in ev.changes) if (c.pressed) { starts.getOrPut(c.id) { c.position }; lasts[c.id] = c.position }
             if (ev.changes.count { it.pressed } > 1) {                         // two fingers: not a letter
-                if (!twoFinger) LetterDraw.cancel()
+                if (!twoFinger) { LetterDraw.cancel(); twoAt = android.os.SystemClock.uptimeMillis() }
                 twoFinger = true
                 aborted = true
             }
+            if (twoFinger && !holdMoved && starts.any { (id, p) -> lasts[id]?.let { (it - p).getDistance() > TWO_FINGER_STILL_DP.dp.toPx() } == true }) holdMoved = true
             val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
             if (!ch.pressed) break
             if (ch.isConsumed) aborted = true                                 // a child took it
@@ -118,13 +135,14 @@ fun Modifier.homeStrokes(
             }
         }
         // 3.7: two fingers that both moved down 80 dp+, mostly straight = flashlight
-        if (twoFinger && !down.isConsumed && starts.size >= 2) {
+        if (twoFinger && !held && !down.isConsumed && starts.size >= 2) {
             val ids = starts.keys.take(2)
             val dys = ids.map { lasts.getValue(it).y - starts.getValue(it).y }
             val dxs = ids.map { abs(lasts.getValue(it).x - starts.getValue(it).x) }
             if (dys.all { it > TWO_FINGER_DOWN_DP.dp.toPx() } && dxs.sum() < dys.sum() * 0.6f) onTwoFingerDown()
             return@awaitEachGesture
         }
+        if (held) return@awaitEachGesture
         if (!started && !aborted && canDraw) {                               // a tap on the empty screen
             val at = android.os.SystemClock.uptimeMillis()
             if (at - lastTapAt < viewConfiguration.doubleTapTimeoutMillis && (p0 - lastTap).getDistance() < 48.dp.toPx()) {

@@ -103,6 +103,22 @@ class CapriBrain(private val context: Context) {
         null -> "No flashlight on this thing. Tragic."
     }
 
+    /** 3.9a: two-finger hold status scan. Her one line reacts to the numbers. */
+    fun scan(s: PhoneStatus): String = when {
+        s.battery <= 15 && !s.charging -> done(pick(
+            "${s.battery}%? Plug me in before I black out on you.",
+            "${s.battery}%. I'm running on fumes here.",
+        ), "annoyed")
+        s.charging -> done(pick("Charging. Finally, some respect.", "Plugged in. Look at you, being responsible."), "smug")
+        s.alarmInMin != null && s.alarmInMin in 0..60 -> done(pick(
+            "Alarm in ${s.alarmInMin} minutes. Sleep fast.",
+            "${s.alarmInMin} minutes till your alarm. Why are you awake?",
+        ), "smirk")
+        s.unread == null -> done("Can't count your notifs without access. Say \"notifs\".", "shrug")
+        s.unread == 0 -> done(pick("Zero unread. Nobody misses you. Lucky me.", "Inbox clean. Suspicious."), "smirk")
+        else -> done(pick("There. Don't make me repeat it.", "Scanned. You're welcome.", "All yours. Try to keep up."), "smirk")
+    }
+
     /** 3.4: swiped back in after you swiped her away. */
     fun back(): String = pick(
         "Back. Try not to look so relieved.",
