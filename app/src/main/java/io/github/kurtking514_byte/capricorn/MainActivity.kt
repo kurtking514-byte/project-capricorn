@@ -222,6 +222,7 @@ class MainActivity : ComponentActivity() {
                             onAppInfo = ::openAppInfo,
                             onClose = { drawerOpen = false },
                             closing = !drawerOpen,
+                            skin = skin,
                         )
                     }
                     AnimatedVisibility(visible = showBoot, enter = EnterTransition.None, exit = fadeOut(tween(250))) {

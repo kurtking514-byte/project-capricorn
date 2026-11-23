@@ -63,6 +63,7 @@ fun AppDrawer(
     onAppInfo: (AppEntry) -> Unit,
     onClose: () -> Unit,
     closing: Boolean = false,
+    skin: CapriSkin? = null,
 ) {
     var query by remember { mutableStateOf("") }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -168,7 +169,12 @@ fun AppDrawer(
                 .padding(horizontal = 16.dp),
         )
 
-        LazyVerticalGrid(
+        // 3.8b: with an empty search the list is her hair fan; typing shows the results grid
+        if (q.isEmpty()) HairFan(
+            apps = apps, frequent = frequent, skin = skin, dockKeys = dockKeys,
+            bottomPad = with(density) { bottomInset.toPx() },
+            onLaunch = launch, onToggleDock = onToggleDock, onAppInfo = onAppInfo,
+        ) else LazyVerticalGrid(
             columns = GridCells.Fixed(4),
             state = grid,
             contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = bottomInset + 16.dp),
@@ -223,7 +229,7 @@ private fun SectionHeader(text: String) {
     )
 }
 
-private fun letterOf(label: String): String {
+internal fun letterOf(label: String): String {
     val c = label.firstOrNull()?.uppercaseChar() ?: return "#"
     return if (c.isLetter()) c.toString() else "#"
 }
