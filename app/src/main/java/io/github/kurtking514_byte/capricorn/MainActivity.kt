@@ -174,7 +174,7 @@ class MainActivity : ComponentActivity() {
                             say(when {
                                 CapriTime.wake() -> brain.wakeUp()      // C4: she was dozing
                                 held -> brain.hold()
-                                else -> brain.poke()
+                                else -> brain.poke { brain.repeatLast(apps, ::launchSoon) { drawerOpen = true } }
                             })
                         },
                         onOpenDrawer = { drawerOpen = true },

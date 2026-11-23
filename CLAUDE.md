@@ -110,11 +110,28 @@ Boot preview is its own small page: `preview/boot-lab.html`, published at https:
 - [x] D4 (2026-11-23, builds; not seen on phone) Glitch: green + crimson horizontal bar bursts, designed in `preview/glitch-lab.html` (https://claude.ai/artifact/U7JnHY6Lbm6AjRuBpRk5oB). User picks: **pose change = "Strips + green"** (150 ms slices with crimson split hide the jump, plus bars in 3 steps of 83 ms at 80/50/25%, 250 ms total; `POSE_*` + `drawGlitchBars` in `ui/CapriSprite.kt`), and **she appears = 0.5 s** ("closest to the show"): in the boot she is a dim crimson silhouette (0–35%), then real colors with heavy bars and eyes dropping out, at 0.3 s she tears into `idle_wave_raise` (0.15 s strips) while the bars fade; lightning lands at ~0.49 s, as the bars end (`APPEAR`, `RAISE_AT`, `TO_RAISED` in `ui/BootOverlay.kt`). Boot is ~0.23 s longer than before. Not done (sprite can't do it): hair boil and face-panel jump
 
 ### Phase 3 — Commands & gestures
-- [ ] 3.1 Gestures on home Capri: double-tap screenshot, triple-tap lock
-- [ ] 3.2 Gestures: swipe up flashlight, swipe down silent mode
-- [ ] 3.3 Gesture settings screen (remap each gesture)
-- [ ] 3.4 Chat commands: call contact, wifi/bluetooth settings, music pause/next
-- [ ] 3.5 Live search in chatbox also shows contacts and settings
+Gestures (user picked all 11 on 2026-11-23, replacing the old screenshot/lock/flashlight/silent list). Each is useful AND
+uses a show moment (red hits, green + crimson bars, lightning, quick blinks, snaps). New looks go to the web preview first;
+pure gesture logic goes straight into the app. Taps on her: 1 tap keeps her poke reaction (sass), 3+ quick taps = annoyed;
+2 taps is now "do that again" (the double-poke shrug goes away; shrug still appears in idle moves).
+On her:
+- [x] 3.1 (2026-11-23, builds; not seen on phone) Double-tap her = repeat your last chat command that did something; she snaps to a smirk (`CapriBrain.repeatLast`, `lastCommand`). Double-tap = 2nd tap within 350 ms (`DOUBLE_TAP_MS`); the first tap still shows sass. Nothing to repeat yet → teasing line. A slower 2nd poke (0.35–1.5 s) still shrugs; 3+ quick = annoyed
+- [ ] 3.2 Long-press her = double blink, chatbox opens with the keyboard up (her "smug" hold reaction is dropped or moved; decide in this step)
+- [ ] 3.3 Drag an app onto her = red hit, she "grabs" it: pin to dock, app info, uninstall, hide (preview the grab first)
+- [ ] 3.4 Swipe her sideways = she glitches out (green + crimson bars), clean home; swipe back = glitches back in
+On the empty screen:
+- [ ] 3.5 Draw a letter = red lightning trail, she opens the app starting with that letter (preview the trail first)
+- [ ] 3.6 Double-tap = lock: full red hit, she glitches out, screen off (needs the accessibility service; if off she says so in character)
+- [ ] 3.7 Two-finger swipe down = flashlight on/off, red slash flash across the screen
+- [ ] 3.8 Swipe up = app drawer, lightning strikes the app rows as they appear (preview first; must stay fast)
+- [ ] 3.9 Two-finger hold = red scan flash, she says battery, next alarm and unread notification count in one line (preview the scan first)
+Moving the phone:
+- [ ] 3.10 Face down = silent mode; picked up = "back online" + glitch-in, sound mode restored
+- [ ] 3.11 Shake = heavy glitch bars, she undoes her last action (closed app, pin, changed setting)
+Then:
+- [ ] 3.12 Gesture settings screen (turn each gesture on/off, remap)
+- [ ] 3.13 Chat commands: call contact, wifi/bluetooth settings, music pause/next, silent mode
+- [ ] 3.14 Live search in chatbox also shows contacts and settings
 
 ### Phase 4 — Her world
 - [ ] 4.1 Psyches (moods) by time of day / battery — preview first

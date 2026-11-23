@@ -34,10 +34,16 @@ class CapriBrain(private val context: Context) {
     private var pokeStreak = 0
     private var lastPoke = 0L
 
-    fun poke(): String {
+    /**
+     * One tap on her. A quick second tap (within [DOUBLE_TAP_MS]) is a double-tap: step 3.1,
+     * [again] repeats your last command. A slower second poke still gets the shrug, 3+ = annoyed.
+     */
+    fun poke(again: () -> String): String {
         val now = android.os.SystemClock.uptimeMillis()
+        val double = pokeStreak == 1 && now - lastPoke < DOUBLE_TAP_MS
         pokeStreak = if (now - lastPoke < POKE_WINDOW_MS) pokeStreak + 1 else 1
         lastPoke = now
+        if (double) return again()
         return when {
             pokeStreak >= 3 -> pick(                                    // arms crossed, annoyed
                 "Okay. Stop. I'm counting, and you're losing.",
@@ -120,7 +126,19 @@ class CapriBrain(private val context: Context) {
         showApps: () -> Unit,
     ): String {
         mood = "skeptical"
-        return understand(raw, apps, launch, showApps)
+        return understand(raw, apps, launch, showApps).also { if (acted) lastCommand = raw }
+    }
+
+    /** 3.1: the last chat command that actually did something, for "do that again". */
+    private var lastCommand: String? = null
+
+    /** 3.1 double-tap: runs the last command again; she snaps to a smirk. */
+    fun repeatLast(apps: List<AppEntry>, launch: (AppEntry) -> Boolean, showApps: () -> Unit): String {
+        val cmd = lastCommand ?: return pick(
+            "Again? You haven't asked me for anything yet.",
+            "Repeat what, genius? Give me something first.",
+        ).also { mood = "smirk" }
+        return respond(cmd, apps, launch, showApps).also { mood = "smirk" }
     }
 
     /** True if the last reply actually did something (C3 red hit). Reading it resets it. */
@@ -299,3 +317,6 @@ class CapriBrain(private val context: Context) {
 
 /** Pokes closer together than this count as one streak. */
 private const val POKE_WINDOW_MS = 1_500L
+
+/** A second tap sooner than this after the first is a double-tap ("do that again"). */
+private const val DOUBLE_TAP_MS = 350L
