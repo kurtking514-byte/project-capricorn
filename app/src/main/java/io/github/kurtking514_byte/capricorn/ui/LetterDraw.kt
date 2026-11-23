@@ -72,7 +72,12 @@ private val BREAK_BARS = floatArrayOf(0.9f, 0.55f, 0.25f)
  * by a child like an app drag or her sideways swipe) is drawn and read: [onLetter] gets the
  * letter, or null if it wasn't one.
  */
-fun Modifier.homeStrokes(onDrawer: () -> Unit, onLetter: (Char?) -> Unit): Modifier = pointerInput(Unit) {
+fun Modifier.homeStrokes(
+    onDrawer: () -> Unit, onLetter: (Char?) -> Unit, onDoubleTap: () -> Unit,
+): Modifier = pointerInput(Unit) {
+    // 3.6: two taps on the empty screen, close in time and place = double-tap
+    var lastTapAt = 0L
+    var lastTap = Offset.Zero
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false)
         val p0 = down.position
@@ -97,6 +102,16 @@ fun Modifier.homeStrokes(onDrawer: () -> Unit, onLetter: (Char?) -> Unit): Modif
                 ch.consume()
                 if (!LetterDraw.drawing) { LetterDraw.stroke.clear(); LetterDraw.drawing = true }
                 LetterDraw.stroke.add(ch.position)
+            }
+        }
+        if (!started && !aborted && canDraw) {                               // a tap on the empty screen
+            val at = android.os.SystemClock.uptimeMillis()
+            if (at - lastTapAt < viewConfiguration.doubleTapTimeoutMillis && (p0 - lastTap).getDistance() < 48.dp.toPx()) {
+                lastTapAt = 0L
+                onDoubleTap()
+            } else {
+                lastTapAt = at
+                lastTap = p0
             }
         }
         if (!started || aborted) { LetterDraw.cancel(); return@awaitEachGesture }

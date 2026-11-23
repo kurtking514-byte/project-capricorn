@@ -38,6 +38,7 @@ import io.github.kurtking514_byte.capricorn.data.AppEntry
 import io.github.kurtking514_byte.capricorn.data.AppRepository
 import io.github.kurtking514_byte.capricorn.data.Prefs
 import io.github.kurtking514_byte.capricorn.overlay.CapriNotifListener
+import io.github.kurtking514_byte.capricorn.overlay.CapriOverlayService
 import io.github.kurtking514_byte.capricorn.ui.AppDrawer
 import io.github.kurtking514_byte.capricorn.ui.AppGrab
 import io.github.kurtking514_byte.capricorn.ui.CapriAway
@@ -198,6 +199,7 @@ class MainActivity : ComponentActivity() {
                         onGrabAction = ::grabAction,
                         letterPick = letterPick,
                         onLetter = ::onLetter,
+                        onDoubleTapEmpty = ::lockFromHome,
                         onPickLetterApp = {
                             letterPick = null
                             say(brain.letterPicked(it.label))
@@ -351,6 +353,20 @@ class MainActivity : ComponentActivity() {
         }, 120)
     }
 
+    /**
+     * 3.6: double-tap the empty home screen = lock. Red command hit, she glitches out (3.4's
+     * glitch-out, 250 ms), then the screen locks at 320 ms. Locking needs her accessibility
+     * service; without it she tells you to say "overlay".
+     */
+    private fun lockFromHome() {
+        val overlay = CapriOverlayService.instance
+        if (overlay == null) { say(brain.lockNeedsOverlay()); return }
+        say(brain.lockHome())
+        if (!CapriAway.away) CapriAway.toggle()
+        window.decorView.postDelayed({ overlay.lockScreen() }, LOCK_AFTER_MS)
+        window.decorView.postDelayed({ CapriAway.reset() }, LOCK_AFTER_MS + 600)
+    }
+
     /** Chat "unhide": every hidden app comes back. */
     private fun unhideAll() {
         val n = hidden.size
@@ -367,6 +383,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+/** 3.6: the screen locks this long after the double-tap, so the red hit and her glitch-out show. */
+private const val LOCK_AFTER_MS = 320L
 
 /** C5: she complains once when the battery drops to this percent (not charging). */
 private const val LOW_BATTERY = 15

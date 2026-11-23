@@ -147,7 +147,7 @@ fun Modifier.appGesture(
                         val ch = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
                         o = when {
                             ch == null -> "cancel"
-                            !ch.pressed -> "tap"
+                            !ch.pressed -> { ch.consume(); "tap" }       // claimed: not a tap on the empty screen
                             ch.isConsumed || (ch.position - down.position).getDistance() > slop -> "cancel"
                             else -> ""
                         }

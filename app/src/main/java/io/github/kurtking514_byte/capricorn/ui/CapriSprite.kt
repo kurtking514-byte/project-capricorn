@@ -688,6 +688,11 @@ object CapriAway {
     /** Set by MainActivity (she says something when she's back). */
     var onChange: (Boolean) -> Unit = {}
 
+    /** Back in place with no glitch and no line (3.6: after the screen locks, it's off anyway). */
+    fun reset() {
+        away = false
+    }
+
     fun toggle() {
         away = !away
         changedAt = android.os.SystemClock.uptimeMillis()

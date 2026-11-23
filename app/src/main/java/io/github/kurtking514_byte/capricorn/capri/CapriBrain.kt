@@ -89,6 +89,13 @@ class CapriBrain(private val context: Context) {
         "I can't read that. Neat strokes, champ.",
     ).also { mood = "shrug" }
 
+    // 3.6: double-tap the empty home screen to lock
+    fun lockHome(): String = done(pick("Lights out.", "Night night, screen.", "Going dark."), "smirk")
+    fun lockNeedsOverlay(): String = pick(
+        "I can't lock without my overlay powers. Say \"overlay\" and switch me on.",
+        "Double-tap all you want. Say \"overlay\" first, then I can lock it.",
+    ).also { mood = "annoyed" }
+
     /** 3.4: swiped back in after you swiped her away. */
     fun back(): String = pick(
         "Back. Try not to look so relieved.",
