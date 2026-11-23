@@ -514,7 +514,7 @@ private fun CapriStage(
                 .onSizeChanged { bubbleHeight = it.height }
                 .graphicsLayer {
                     translationY = bubbleY + 14.dp.toPx() * (1f - pop())
-                    alpha = enter()
+                    alpha = if (CapriAway.away) 0f else enter()          // 3.4: clean home while she's away
                     scaleX = 0.94f + 0.06f * pop()
                     scaleY = 0.94f + 0.06f * pop()
                 },

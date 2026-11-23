@@ -23,6 +23,9 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.runtime.withFrameMillis
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -503,6 +506,16 @@ fun CapriSpriteFigure(
         headTop(size.height - CapriMeshPainter.GROUND * h + skin.top(poseForHead) * h)
     }
 
+    // 3.4: ms since she glitched out / back in (real time, runs only during the glitch)
+    var awayMs by remember { mutableFloatStateOf(AWAY_IN_MS) }
+    LaunchedEffect(CapriAway.changedAt) {
+        if (CapriAway.changedAt == 0L) return@LaunchedEffect
+        do {
+            withFrameMillis { }
+            awayMs = (android.os.SystemClock.uptimeMillis() - CapriAway.changedAt).toFloat()
+        } while (awayMs < AWAY_IN_MS)
+    }
+
     val origin = remember { floatArrayOf(0f, 0f) }      // canvas position on screen, for AppGrab
     Canvas(
         modifier
@@ -510,15 +523,45 @@ fun CapriSpriteFigure(
             .onGloballyPositioned { val p = it.positionInRoot(); origin[0] = p.x; origin[1] = p.y }
             .pointerInput(Unit) {
                 detectTapGestures(
-                    onTap = { poke(false) },
-                    onLongPress = { listenTick++; poke(true) },
+                    onTap = { if (!CapriAway.away) poke(false) },
+                    onLongPress = { if (!CapriAway.away) { listenTick++; poke(true) } },
                 )
+            }
+            .pointerInput(Unit) {
+                // 3.4: a sideways swipe on her (or on the empty spot where she was) toggles her
+                var dx = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { dx = 0f },
+                    onDragEnd = { if (kotlin.math.abs(dx) > AWAY_SWIPE_DP.dp.toPx()) CapriAway.toggle() },
+                ) { change, amount ->
+                    dx += amount
+                    change.consume()
+                }
             }
     ) {
         val t = time
         val a = fade.value
         val from = fromName?.let { skin.bitmap(it) }
         val to = skin.bitmap(shownName)
+
+        // 3.4: away = clean home. Out: strips + bars, 250 ms. Back: like her boot appear, 0.5 s
+        // (dim crimson silhouette, then her colors with bars thinning out).
+        if (CapriAway.away) {
+            AppGrab.herBox = Rect.Zero                           // nothing to drop apps on
+            if (to == null || awayMs >= AWAY_OUT_MS) return@Canvas
+            if (awayMs < POSE_STRIPS_MS) drawPoseGlitch(painter, to, to, awayMs / POSE_STRIPS_MS, glitchSeed + 77, t, tilt, 0f, topInset)
+            val step = (awayMs / GLITCH_STEP_MS).toInt()
+            drawGlitchBars(painter, to, topInset, step, AWAY_OUT_BARS.getOrElse(step) { 0f }, glitchSeed + 77)
+            return@Canvas
+        }
+        if (CapriAway.changedAt != 0L && awayMs < AWAY_IN_MS && to != null) {
+            val f = awayMs / AWAY_IN_MS
+            painter.draw(this, to, 1f, t, tilt[0], tilt[1], 0f, topInset = topInset, dim = f < 0.35f)
+            val bars = if (f < 0.6f) 1f else 1f - (f - 0.6f) / 0.4f
+            drawGlitchBars(painter, to, topInset, (awayMs / GLITCH_STEP_MS).toInt(), bars, glitchSeed + 78)
+            return@Canvas
+        }
+
         // 3.3: tell AppGrab where her body is (middle 60% of the frame, hair top to feet), on screen
         to?.let {
             val fh = painter.frameHeight(size, it, topInset = topInset)
@@ -632,6 +675,29 @@ internal fun DrawScope.drawGlitchBars(
         }
     }
 }
+
+/**
+ * 3.4: swipe her sideways and she glitches out, leaving a clean home screen; swipe the same
+ * spot again and she glitches back in. Taps do nothing while she's away.
+ */
+object CapriAway {
+    var away by mutableStateOf(false)
+        private set
+    var changedAt by mutableLongStateOf(0L)
+        private set
+    /** Set by MainActivity (she says something when she's back). */
+    var onChange: (Boolean) -> Unit = {}
+
+    fun toggle() {
+        away = !away
+        changedAt = android.os.SystemClock.uptimeMillis()
+        onChange(away)
+    }
+}
+internal const val AWAY_SWIPE_DP = 80
+internal const val AWAY_OUT_MS = 250f
+internal const val AWAY_IN_MS = 500f
+private val AWAY_OUT_BARS = floatArrayOf(1f, 0.6f, 0.3f)
 
 /** Where the user last touched the home screen (0..1 across) and when (uptime ms). */
 object CapriGaze {

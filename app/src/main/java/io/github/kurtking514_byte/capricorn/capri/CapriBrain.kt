@@ -78,6 +78,13 @@ class CapriBrain(private val context: Context) {
     fun unhidden(n: Int): String = if (n == 0) pick("Nothing's hidden. You're an open book.").also { mood = "shrug" }
         else done(if (n == 1) "One app back from the shadows." else "$n apps back from the shadows.", "smirk")
 
+    /** 3.4: swiped back in after you swiped her away. */
+    fun back(): String = pick(
+        "Back. Try not to look so relieved.",
+        "Couldn't last a minute without me, huh?",
+        "Did you miss me, or do you need something?",
+    ).also { mood = "smirk" }
+
     /** C4: poked while she was dozing late at night. */
     fun wakeUp(): String = pick(
         "Wha— I wasn't sleeping. I was buffering.",

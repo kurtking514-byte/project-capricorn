@@ -40,6 +40,7 @@ import io.github.kurtking514_byte.capricorn.data.Prefs
 import io.github.kurtking514_byte.capricorn.overlay.CapriNotifListener
 import io.github.kurtking514_byte.capricorn.ui.AppDrawer
 import io.github.kurtking514_byte.capricorn.ui.AppGrab
+import io.github.kurtking514_byte.capricorn.ui.CapriAway
 import io.github.kurtking514_byte.capricorn.ui.GrabAction
 import io.github.kurtking514_byte.capricorn.ui.BootOverlay
 import io.github.kurtking514_byte.capricorn.ui.CapriSkin
@@ -145,6 +146,7 @@ class MainActivity : ComponentActivity() {
         hidden = prefs.hidden()
         AppGrab.onHover = { over -> if (over) say(brain.grabHover()) }
         AppGrab.onDrop = { say(brain.grab(it.label)) }
+        CapriAway.onChange = { away -> if (!away) say(brain.back()) }
         launchCounts = prefs.launchCounts()
         getSystemService(LauncherApps::class.java).registerCallback(packageCallback)
         ContextCompat.registerReceiver(
