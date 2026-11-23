@@ -34,7 +34,9 @@ import kotlin.random.Random
  * Wordless boot, tap to skip (designed in preview/boot-lab.html):
  *  1. 3–5 hard crimson hits at random times and in random shapes (full screen, slash, band,
  *     half screen); somewhere in the middle she glitches through for a split second.
- *  2. She glitches in at her home-screen spot, then glitches into her raised-arm pose.
+ *  2. She appears at her home-screen spot with the show's bar glitch (0.5 s: dim crimson
+ *     silhouette, then real colors with green + crimson bars that thin out), and at 0.3 s
+ *     tears into her raised-arm pose (0.15 s strips). The lightning lands as the bars end.
  *  3. 3–4 lightning bolts strike down onto each pinned app, app by app in random order; each
  *     dock slot flashes crimson, pops in and glitches (see [BootDock] / [bootSlot]).
  * Without a sprite skin only the flashes play; the boot never draws a code-made Capri.
@@ -46,6 +48,7 @@ fun BootOverlay(skin: CapriSkin?, onDone: () -> Unit) {
     val painter = remember { CapriMeshPainter() }
     val still = remember(skin) { skin?.bitmap("neutral") }
     val raised = remember(skin) { skin?.let { it.bitmap(it.pick("idle_wave_raise", "neutral")) } }
+    val blinkClosed = remember(skin) { skin?.bitmap("idle_blink_closed") }
     val noTilt = remember { FloatArray(2) }
 
     var time by remember { mutableFloatStateOf(0f) }
@@ -111,14 +114,23 @@ fun BootOverlay(skin: CapriSkin?, onDone: () -> Unit) {
             else drawHit(hit, k)
         }
 
-        // 2. she arrives
+        // 2. she appears (show's bar glitch, 0.5 s, picked in preview/glitch-lab.html), and
+        //    raises her arm with the pose-change strips when the heavy part ends
         if (still == null || raised == null || t < plan.flashEnd) return@Canvas
         val a = t - plan.flashEnd
+        val step = (a * 1000f / GLITCH_STEP_MS).toInt()
         when {
-            a < GLITCH_IN -> glitch(still, still, a / GLITCH_IN, plan.arriveSeed)
-            a < GLITCH_IN + TO_RAISED -> glitch(still, raised, (a - GLITCH_IN) / TO_RAISED, plan.arriveSeed + 1)
+            a < APPEAR * SILHOUETTE ->                       // dim crimson silhouette inside the bars
+                painter.draw(this, still, 1f, t, 0f, 0f, 0f, lift = rest, topInset = inset, dim = true)
+            a < RAISE_AT -> {                                // real colors; her eyes drop out now and then
+                val eyesOut = blinkClosed != null && capriJitter(plan.arriveSeed, 50 + step) > 0.7f
+                painter.draw(this, if (eyesOut) blinkClosed!! else still, 1f, t, 0f, 0f, 0f, lift = rest, topInset = inset)
+            }
+            a < RAISE_AT + TO_RAISED -> glitch(still, raised, (a - RAISE_AT) / TO_RAISED, plan.arriveSeed + 1)
             else -> painter.draw(this, raised, 1f, t, 0f, 0f, 0f, lift = rest, topInset = inset)
         }
+        val barsI = if (a < RAISE_AT) 1f else (1f - (a - RAISE_AT) / (APPEAR - RAISE_AT)).coerceAtLeast(0f)
+        translate(top = -rest) { drawGlitchBars(painter, still, inset, step, barsI, plan.arriveSeed) }
 
         // 3. lightning: 3–4 bolts from the top of the screen converge on each pinned app
         //    (with no pinned apps, placeholder tiles at the bottom get struck instead)
@@ -151,9 +163,11 @@ fun BootOverlay(skin: CapriSkin?, onDone: () -> Unit) {
     }
 }
 
-// Arrival timing, seconds.
-private const val GLITCH_IN = 0.12f
-private const val TO_RAISED = 0.10f
+// Arrival timing, seconds (CAPRI_REFERENCE.md glitch, squeezed to 0.5 s; user pick 2026-11-23).
+private const val APPEAR = 0.5f         // whole appear glitch: bars from full strength to nothing
+private const val SILHOUETTE = 0.35f    // first 35%: dim crimson silhouette
+private const val RAISE_AT = APPEAR * 0.6f  // heavy bars until 60%; then she raises her arm
+private const val TO_RAISED = 0.15f     // arm raise: pose-change strips (same as the home screen)
 private const val STRIKE_DELAY = 0.04f  // after her arm is up, everything is struck at once
 private const val HOLD = 0.3f           // if there's nothing to strike
 private const val MAX_DOCK = 5
@@ -228,7 +242,7 @@ private class BootPlan(
     val strikeAt: FloatArray,      // seconds after strikeStart, by strike rank
     val bolts: List<List<Bolt>>,   // per dock index
 ) {
-    val strikeStart = flashEnd + GLITCH_IN + TO_RAISED
+    val strikeStart = flashEnd + RAISE_AT + TO_RAISED
 
     companion object {
         fun random(withGlitch: Boolean): BootPlan {

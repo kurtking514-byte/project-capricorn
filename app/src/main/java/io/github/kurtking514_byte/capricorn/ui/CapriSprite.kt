@@ -9,6 +9,8 @@ import android.graphics.PorterDuffColorFilter
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.Color
+import kotlin.math.roundToInt
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -143,8 +145,22 @@ class CapriSkin private constructor(private val context: Context, private val na
     }
 }
 
-private val TALK = listOf("idle_mouth_small", "idle_mouth_round", "idle_mouth_wide", "idle_mouth_round")
+// Talking mouth (CAPRI_REFERENCE.md 2.3): only "small" and "wide" are used; closed = neutral.
+// The show has no round mouth, so idle_mouth_round is no longer used.
+private val TALK = listOf("idle_mouth_small", "idle_mouth_wide")
+internal const val MOUTH_BIG_MS = 167L        // big mouth held 4 frames at 24 fps
+internal const val MOUTH_SHORT_MS = 83L       // small or closed held 2 frames
+internal const val MOUTH_SMALL_CHANCE = 0.67f // after the big mouth: small 2 of 3 times, closed 1 of 3
 private val QUICK = TALK.toSet() + setOf("idle_blink_half", "idle_blink_closed", "idle_wave_a", "idle_wave_b")
+private val BLINK = setOf("idle_blink_half", "idle_blink_closed")
+
+// Blink timing from the show (CAPRI_REFERENCE.md 2.1). The gap range and double-blink chance are
+// estimates from a few measured blinks plus 4.5–6.6 s stretches with none.
+internal const val BLINK_CLOSED_MS = 83L
+internal const val BLINK_GAP_MIN_MS = 2_500L
+internal const val BLINK_GAP_MAX_MS = 7_000L
+internal const val BLINK_DOUBLE_APART_MS = 333L
+internal const val BLINK_DOUBLE_CHANCE = 0.3f
 
 /** Every full pose, for the "poses" chat command. Only poses in [CapriSkin.ALLOWED]. */
 private val SHOWCASE = listOf(
@@ -177,6 +193,10 @@ class CapriMeshPainter {
     private val tintPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply {
         colorFilter = PorterDuffColorFilter(CapriColors.Pink.toArgb(), PorterDuff.Mode.SRC_IN)
     }
+    /** Same frame as a dim crimson silhouette, for the first part of her appear glitch. */
+    private val dimPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply {
+        colorFilter = PorterDuffColorFilter(GLITCH_DIM.toArgb(), PorterDuff.Mode.SRC_IN)
+    }
 
     /**
      * How tall the whole frame is drawn. A standing figure fills the space under
@@ -198,7 +218,7 @@ class CapriMeshPainter {
         scope: DrawScope, bitmap: Bitmap, alpha: Float,
         t: Float, tiltX: Float, tiltY: Float, bounce: Float,
         zoom: Float = 1f, life: Float = 1f, lift: Float = 0f, shiftX: Float = 0f, topInset: Float = 0f,
-        crimson: Boolean = false,
+        crimson: Boolean = false, dim: Boolean = false,
     ) {
         if (alpha <= 0f) return
         val size = scope.size
@@ -208,7 +228,7 @@ class CapriMeshPainter {
             verts, (size.width - w) / 2f + shiftX, size.height - GROUND * h - lift, w, h,
             t, tiltX, tiltY, bounce, life,
         )
-        val p = if (crimson) tintPaint else paint
+        val p = if (dim) dimPaint else if (crimson) tintPaint else paint
         p.alpha = (alpha.coerceIn(0f, 1f) * 255).toInt()
         scope.drawIntoCanvas {
             it.nativeCanvas.drawBitmapMesh(bitmap, CapriMesh.COLS, CapriMesh.ROWS, verts, 0, null, 0, p)
@@ -266,9 +286,9 @@ fun rememberTilt(): FloatArray {
 }
 
 /**
- * Capri from the sprite skin, standing free on the home screen and moving smoothly:
- * she sways, breathes and her hair ripples, leans with the phone's tilt, blends from one
- * pose to the next and bounces when tapped.
+ * Capri from the sprite skin, standing free on the home screen. Like in the show she holds
+ * still (no sway, breathing, hair motion, tilt lean or bounce) and changes pose with a
+ * short glitch.
  * Left alone for a while she does her own thing: sits down, lies down, crouches, looks
  * around. Any tap or new line gets her back on her feet.
  *
@@ -291,8 +311,7 @@ fun CapriSpriteFigure(
     val scope = rememberCoroutineScope()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val painter = remember { CapriMeshPainter() }
-    val tiltTarget = rememberTilt()
-    val tilt = remember { FloatArray(2) }
+    val tilt = remember { FloatArray(2) }   // always 0: no phone-tilt lean (show style)
     var canvas by remember { mutableStateOf(IntSize.Zero) }
 
     // Clock for the motion. Only the drawing reads it, so nothing else is redone per frame.
@@ -304,9 +323,6 @@ fun CapriSpriteFigure(
                 withFrameNanos { now ->
                     val dt = ((now - last) / 1e9f).coerceIn(0f, 0.05f)
                     last = now
-                    val ease = (dt * 6f).coerceAtMost(1f)
-                    tilt[0] += (tiltTarget[0] - tilt[0]) * ease
-                    tilt[1] += (tiltTarget[1] - tilt[1]) * ease
                     time += dt * CapriTime.period.sway     // C4: slower sway in the evening/night
                 }
             }
@@ -315,11 +331,6 @@ fun CapriSpriteFigure(
 
     // Pose for the current mood, falling back to neutral after a few seconds.
     var current by remember { mutableStateOf("neutral") }
-    val bounce = remember { Animatable(0f) }
-    fun kick(strength: Float) = scope.launch {
-        bounce.snapTo(strength)
-        bounce.animateTo(0f, spring(dampingRatio = 0.32f, stiffness = Spring.StiffnessLow))
-    }
 
     // What she's doing on her own, or null while she's just standing there.
     var activity by remember { mutableStateOf<String?>(null) }
@@ -328,15 +339,12 @@ fun CapriSpriteFigure(
 
     LaunchedEffect(moodId) {
         activity = null
-        if (moodId > 0) {
-            kick(0.55f)
-        }
+        // Pose changes snap with no spring wobble (show style, CAPRI_REFERENCE.md).
         if (mood == "showcase") {
             // "poses" chat command: every pose in the skin once, 2 s each
             current = "neutral"
             for (pose in SHOWCASE.filter { skin.has(it) }) {
                 activity = pose
-                kick(0.3f)
                 delay(2_000)
             }
             activity = null
@@ -351,29 +359,44 @@ fun CapriSpriteFigure(
             if (CapriTime.dozing) continue                 // asleep on her feet: no activities
             activity = (activities - lastActivity).randomOrNull() ?: activities.random()
             lastActivity = activity
-            kick(0.4f)
             delay((Random.nextLong(6_000L, 10_000L) * CapriTime.period.pace).toLong())
             activity = null
-            kick(0.4f)
         }
     }
 
+    // Show-style blink (CAPRI_REFERENCE.md 2.1): eyes simply gone for 83 ms (2 frames at 24 fps),
+    // no half-closed step. Irregular gaps; about 1 in 3 is a double blink, 333 ms apart.
     var blink by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         while (true) {
-            delay(Random.nextLong(2_200L, 5_500L))
-            blink = 1; delay(70)
-            blink = 2; delay(110)
-            blink = 1; delay(70)
+            delay(Random.nextLong(BLINK_GAP_MIN_MS, BLINK_GAP_MAX_MS))
+            blink = 2; delay(BLINK_CLOSED_MS)
             blink = 0
+            if (Random.nextFloat() < BLINK_DOUBLE_CHANCE) {
+                delay(BLINK_DOUBLE_APART_MS - BLINK_CLOSED_MS)
+                blink = 2; delay(BLINK_CLOSED_MS)
+                blink = 0
+            }
         }
     }
+    // Wave frames alternate every 105 ms.
     var step by remember { mutableIntStateOf(0) }
-    LaunchedEffect(speaking, current) {
-        while (speaking || current == "wave") {
+    LaunchedEffect(current) {
+        while (current == "wave") {
             delay(105)
             step++
         }
+    }
+    // Talking, show rhythm: big mouth 167 ms, then small (2 of 3) or closed (1 of 3) for 83 ms,
+    // repeat. About 250 ms per cycle, uneven. Ends closed (neutral) when she stops talking.
+    var mouth by remember { mutableStateOf("neutral") }
+    LaunchedEffect(speaking) {
+        while (speaking) {
+            mouth = "idle_mouth_wide"; delay(MOUTH_BIG_MS)
+            mouth = if (Random.nextFloat() < MOUTH_SMALL_CHANCE) "idle_mouth_small" else "neutral"
+            delay(MOUTH_SHORT_MS)
+        }
+        mouth = "neutral"
     }
 
     // C1: she looks toward wherever you touch the screen, for a moment
@@ -406,7 +429,7 @@ fun CapriSpriteFigure(
     val doing = activity
     val name = when {
         dozing && !speaking -> "idle_blink_closed"
-        speaking && current in setOf("neutral", "happy", "smirk", "wave") && doing == null -> TALK[step % TALK.size]
+        speaking && current in setOf("neutral", "happy", "smirk", "wave") && doing == null -> mouth
         looking && !speaking -> when {
             CapriGaze.x < 0.4f -> "idle_look_left"
             CapriGaze.x > 0.6f -> "idle_look_right"
@@ -420,8 +443,9 @@ fun CapriSpriteFigure(
         else -> moodFrame(current)
     }.let { if (skin.has(it)) it else "neutral" }
 
-    // Blinks and mouth frames blend quickly. Every real pose change glitches instead:
-    // she tears into slices with a crimson split, old and new pose mixed, for ~150 ms.
+    // Blinks and mouth frames snap. Every real pose change glitches ("strips + green", picked in
+    // preview/glitch-lab.html): 150 ms of slices with a crimson split hide the jump, while green
+    // and crimson bars flicker around her in 3 steps of 83 ms (80%, 50%, 25%). 250 ms in all.
     var shownName by remember { mutableStateOf(name) }
     var fromName by remember { mutableStateOf<String?>(null) }
     val fade = remember { Animatable(1f) }
@@ -429,13 +453,24 @@ fun CapriSpriteFigure(
     var glitchSeed by remember { mutableIntStateOf(0) }
     LaunchedEffect(name) {
         if (name != shownName) {
+            // Blinks and mouth shapes snap: no fade, no glitch (also not when going back to
+            // neutral, which is the closed mouth / open eyes).
+            val prev = shownName
+            val snap = BLINK + TALK
+            if ((name in snap && prev in snap + "neutral") || (prev in snap && name in snap + "neutral")) {
+                shownName = name
+                fromName = null
+                glitching = false
+                fade.snapTo(1f)
+                return@LaunchedEffect
+            }
             fromName = shownName
             shownName = name
             val quick = name in QUICK && fromName in QUICK + "neutral"
             glitching = !quick
             glitchSeed++
             fade.snapTo(0f)
-            fade.animateTo(1f, tween(if (quick) 55 else 150, easing = LinearEasing))
+            fade.animateTo(1f, tween(if (quick) 55 else POSE_GLITCH_MS, easing = LinearEasing))
             fromName = null
             glitching = false
         }
@@ -457,14 +492,8 @@ fun CapriSpriteFigure(
             .onSizeChanged { canvas = it }
             .pointerInput(Unit) {
                 detectTapGestures(
-                    onTap = {
-                        kick(1f)
-                        poke(false)
-                    },
-                    onLongPress = {
-                        kick(0.6f)
-                        poke(true)
-                    },
+                    onTap = { poke(false) },
+                    onLongPress = { poke(true) },
                 )
             }
     ) {
@@ -473,14 +502,18 @@ fun CapriSpriteFigure(
         val from = fromName?.let { skin.bitmap(it) }
         val to = skin.bitmap(shownName)
         if (glitching && from != null && to != null) {
-            drawPoseGlitch(painter, from, to, a, glitchSeed, t, tilt, bounce.value, topInset)
+            val ms = a * POSE_GLITCH_MS
+            if (ms < POSE_STRIPS_MS) drawPoseGlitch(painter, from, to, ms / POSE_STRIPS_MS, glitchSeed, t, tilt, 0f, topInset)
+            else painter.draw(this, to, 1f, t, tilt[0], tilt[1], 0f, topInset = topInset)
+            val step = (ms / GLITCH_STEP_MS).toInt()
+            drawGlitchBars(painter, to, topInset, step, POSE_BARS.getOrElse(step) { 0f }, glitchSeed)
             return@Canvas
         }
         from?.let {
-            painter.draw(this, it, 1f - a, t, tilt[0], tilt[1], bounce.value, topInset = topInset)
+            painter.draw(this, it, 1f - a, t, tilt[0], tilt[1], 0f, topInset = topInset)
         }
         skin.bitmap(shownName)?.let {
-            painter.draw(this, it, if (fromName == null) 1f else a, t, tilt[0], tilt[1], bounce.value, topInset = topInset)
+            painter.draw(this, it, if (fromName == null) 1f else a, t, tilt[0], tilt[1], 0f, topInset = topInset)
         }
     }
 }
@@ -520,6 +553,57 @@ internal fun DrawScope.drawPoseGlitch(
         }
         y += sliceH
         i++
+    }
+}
+
+// The show's glitch colors (CAPRI_REFERENCE.md): panel green, hair crimson, and a dim crimson
+// for her silhouette at the start of the appear glitch.
+private val GLITCH_GREEN = Color(0xFF00B144)
+private val GLITCH_CRIMSON = Color(0xFFBC002B)
+internal val GLITCH_DIM = Color(0xFF5A0018)
+/** The show changes drawings every 2 frames at 24 fps, so the bars re-roll every 83 ms. */
+internal const val GLITCH_STEP_MS = 83.33f
+/** Pose change: slices for the first 150 ms, bars until 250 ms. */
+internal const val POSE_STRIPS_MS = 150f
+internal const val POSE_GLITCH_MS = 250
+private val POSE_BARS = floatArrayOf(0.8f, 0.5f, 0.25f)
+
+/**
+ * One 83 ms step of the show's bar glitch around her ([bitmap] gives her size and place, like
+ * [CapriMeshPainter.draw]). [intensity] 0..1: 3–12 thin horizontal bars sticking out sideways
+ * from her body, green or crimson, 0.3–2.5% of the canvas height and up to 33% of its width;
+ * sometimes a dense block of 8–10 beside her face; about 1 step in 5 is nearly clean.
+ * Same rules as drawBars() in preview/glitch-lab.html.
+ */
+internal fun DrawScope.drawGlitchBars(
+    painter: CapriMeshPainter, bitmap: Bitmap, topInset: Float, step: Int, intensity: Float, seed: Int,
+) {
+    if (intensity <= 0f) return
+    val fh = painter.frameHeight(size, bitmap, topInset = topInset)
+    val u = CapriMeshPainter.STANDING * fh                                  // her height, hair to feet
+    val top = size.height - CapriMeshPainter.GROUND * fh + (CapriMeshPainter.GROUND - CapriMeshPainter.STANDING) * fh
+    val cx = size.width / 2f
+    val base = seed * 7919 + step * 104729
+    var k = 0
+    fun r() = capriJitter(base, k++) * 0.5f + 0.5f
+    fun bar(y: Float, h: Float, x0: Float, len: Float, dir: Int, color: Color) = drawRect(
+        color, topLeft = Offset(if (dir > 0) x0 else x0 - len, y), size = Size(len, h),
+    )
+    val n = if (r() < 0.22f) (if (r() < 0.5f) 0 else 1) else (3 + 9 * intensity * r()).roundToInt()
+    repeat(n) {
+        val y = top + r() * u * 0.95f
+        val h = size.height * (0.003f + 0.022f * r() * r())
+        val dir = if (r() < 0.5f) -1 else 1
+        val x0 = cx + dir * u * (r() * 0.18f) - dir * u * 0.05f
+        bar(y, h, x0, size.width * (0.05f + 0.28f * r()), dir, if (r() < 0.55f) GLITCH_GREEN else GLITCH_CRIMSON)
+    }
+    if (r() < 0.3f * intensity) {                                           // dense block beside her face
+        val dir = if (r() < 0.5f) -1 else 1
+        val y0 = top + u * (0.08f + r() * 0.06f)
+        repeat(8 + (r() * 3).toInt()) { i ->
+            bar(y0 + i * size.height * 0.006f, size.height * (0.003f + 0.002f * r()), cx + dir * u * 0.04f,
+                size.width * (0.08f + 0.18f * r()), dir, if (r() < 0.8f) GLITCH_GREEN else GLITCH_CRIMSON)
+        }
     }
 }
 

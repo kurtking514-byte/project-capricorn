@@ -11,21 +11,25 @@ import androidx.core.content.ContextCompat
 import io.github.kurtking514_byte.capricorn.R
 import io.github.kurtking514_byte.capricorn.ui.CapriMesh
 import io.github.kurtking514_byte.capricorn.ui.CapriSkin
+import io.github.kurtking514_byte.capricorn.ui.BLINK_CLOSED_MS
+import io.github.kurtking514_byte.capricorn.ui.BLINK_DOUBLE_APART_MS
+import io.github.kurtking514_byte.capricorn.ui.BLINK_DOUBLE_CHANCE
+import io.github.kurtking514_byte.capricorn.ui.BLINK_GAP_MAX_MS
+import io.github.kurtking514_byte.capricorn.ui.BLINK_GAP_MIN_MS
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.random.Random
 
 /**
  * Mini Capri for the floating overlay: a small plain View (no Compose, to stay light).
- * She moves smoothly with the same mesh warp as the home screen: sways, breathes, her
- * hair ripples, she blinks, and she bounces like a spring when touched.
+ * Drawn on the same still mesh as the home screen (no sway, breathing or bounce, like the
+ * show); she blinks.
  * Drawn at about 30 fps to go easy on the battery; paused while the screen is off.
  * Without a sprite skin it falls back to the app icon.
  */
 class MiniCapriView(context: Context, skin: CapriSkin?) : View(context) {
 
     private val neutral: Bitmap? = skin?.bitmap("neutral")
-    private val blinkHalf: Bitmap? = skin?.bitmap("idle_blink_half")
     private val blinkClosed: Bitmap? = skin?.bitmap("idle_blink_closed")
     private val happy: Bitmap? = skin?.bitmap("idle_smirk")
     private val fallback = if (neutral == null) ContextCompat.getDrawable(context, R.mipmap.ic_launcher) else null
@@ -36,6 +40,7 @@ class MiniCapriView(context: Context, skin: CapriSkin?) : View(context) {
     private val born = SystemClock.uptimeMillis()
 
     private var blinkAt = born + 3000        // when the current/next blink starts
+    private var blinkDouble = false          // this blink is a double blink
     private var happyUntil = 0L
     private var bounceAt = 0L                // when she was last poked
     private var bounceSize = 0f
@@ -78,13 +83,19 @@ class MiniCapriView(context: Context, skin: CapriSkin?) : View(context) {
         val now = SystemClock.uptimeMillis()
         val t = (now - born) / 1000f
 
-        // blink: half → closed → half over about a quarter second
+        // Show-style blink (same timing as the home screen): eyes gone for 83 ms, no half step,
+        // irregular gaps, sometimes a second blink 333 ms after the first.
         val sinceBlink = now - blinkAt
-        if (sinceBlink > 260) blinkAt = now + Random.nextLong(2200, 5500)
+        val blinkLen = if (blinkDouble) BLINK_DOUBLE_APART_MS + BLINK_CLOSED_MS else BLINK_CLOSED_MS
+        if (sinceBlink > blinkLen) {
+            blinkAt = now + Random.nextLong(BLINK_GAP_MIN_MS, BLINK_GAP_MAX_MS)
+            blinkDouble = Random.nextFloat() < BLINK_DOUBLE_CHANCE
+        }
+        val closed = sinceBlink in 0 until BLINK_CLOSED_MS ||
+            (blinkDouble && sinceBlink in BLINK_DOUBLE_APART_MS until BLINK_DOUBLE_APART_MS + BLINK_CLOSED_MS)
         val frame = when {
             now < happyUntil -> happy ?: neutral
-            sinceBlink in 70..180 -> blinkClosed ?: neutral
-            sinceBlink in 0..260 -> blinkHalf ?: neutral
+            closed -> blinkClosed ?: neutral
             else -> neutral
         }
 

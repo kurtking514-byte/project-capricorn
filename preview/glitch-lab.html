@@ -1,0 +1,346 @@
+<title>Capri Glitch Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* Layout: same look as the Boot Lab. One phone, two rows of controls, a readout of the timings under it. Single dark look. */
+  :root {
+    color-scheme: dark;
+    --ink: #080E15;
+    --panel: #0C1A22;
+    --crimson: #FF3C68;
+    --cyan: #8EF5ED;
+    --acid: #F4ED75;
+    --text: #E6F4F4;
+    --dim: #7E949C;
+    --line: #1B2E38;
+    --display: "Exo 2", "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--ink); color: var(--text); font-family: var(--display);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 28px; box-sizing: border-box;
+  }
+  .wrap { max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font-weight: 800; font-size: 20px; letter-spacing: .02em; text-transform: uppercase; }
+  h1 span { color: var(--crimson); }
+  .step { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--acid); }
+  .phone {
+    position: relative; width: 100%; max-width: 100%; aspect-ratio: 9 / 19.5; background: #000; border: 2px solid var(--line);
+    clip-path: polygon(0 14px, 14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px));
+  }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .tag {
+    position: absolute; left: 12px; top: 12px; font-family: var(--mono); font-size: 11px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--dim); font-variant-numeric: tabular-nums;
+  }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row-label { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); width: 100%; }
+  button {
+    font: 600 13px/1 var(--display); letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text); background: var(--panel); border: 1px solid var(--line); padding: 11px 14px; cursor: pointer;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  button.primary { background: var(--crimson); color: var(--ink); border-color: var(--crimson); }
+  button[aria-pressed="true"] { border-color: var(--cyan); color: var(--cyan); }
+  button:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
+  .readout { background: var(--panel); border: 1px solid var(--line); padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .readout h2 { margin: 0; font: 600 12px/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--acid); }
+  ul { margin: 0; padding-left: 18px; font-family: var(--mono); font-size: 12px; line-height: 1.55; font-variant-numeric: tabular-nums; }
+  li::marker { color: var(--dim); }
+  .note { font-size: 13px; color: var(--dim); line-height: 1.5; margin: 0; }
+  .note b { color: var(--text); font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Capri <span>glitch</span></h1>
+    <div class="step">Step D4 · show glitch</div>
+  </header>
+
+  <div class="phone" id="phone">
+    <canvas id="c"></canvas>
+    <div class="tag" id="tag">0 ms</div>
+  </div>
+
+  <div class="row" role="group" aria-label="What to play">
+    <span class="row-label">Moment</span>
+    <button id="m-appear" aria-pressed="true">She appears</button>
+    <button id="m-pose" aria-pressed="false">Pose change</button>
+  </div>
+  <div class="row" role="group" aria-label="Version" id="variants"></div>
+  <div class="row">
+    <button class="primary" id="replay">Replay</button>
+    <button id="slow" aria-pressed="false">Slow ×4</button>
+    <button id="loop" aria-pressed="true">Loop</button>
+  </div>
+
+  <div class="readout">
+    <h2 id="r-title"></h2>
+    <ul id="r-list"></ul>
+  </div>
+
+  <p class="note">Timings come from <b>CAPRI_REFERENCE.md</b> (frame counts at 24 fps). The bars re-roll every <b>83 ms</b> because the show changes drawings every 2 frames. The figure is a plain stand-in; the app uses your skin.</p>
+</div>
+
+<script>
+(() => {
+  // Show colors, sampled from the video (CAPRI_REFERENCE.md Part 1)
+  const GREEN = "#00B144", CRIMSON = "#BC002B", CRIMSON_DIM = "#5A0018", BLACK = "#0E0A16",
+        IRIS = "#0040A0", PUPIL = "#B3B3B3", BG = "#1E2126";
+  const STEP = 1000 / 12;                       // 83.3 ms: one drawing every 2 frames at 24 fps
+
+  const cv = document.getElementById("c"), ctx = cv.getContext("2d"), phone = document.getElementById("phone");
+  const tag = document.getElementById("tag"), variants = document.getElementById("variants");
+  const rTitle = document.getElementById("r-title"), rList = document.getElementById("r-list");
+  const slowBtn = document.getElementById("slow"), loopBtn = document.getElementById("loop");
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  let W = 0, H = 0, D = 1, mode = "appear", appearLen = 700, poseStyle = "mix";
+  let slow = false, loop = !reduced, t0 = 0, raf = 0, nextTimer = 0, run = 0, fromPose = 0;
+  loopBtn.setAttribute("aria-pressed", String(loop));
+
+  // seeded random, so a given 83 ms step always draws the same picture
+  const rng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+
+  function resize() {
+    const r = phone.getBoundingClientRect(); D = Math.min(devicePixelRatio || 1, 2);
+    W = r.width; H = r.height; cv.width = Math.round(W * D); cv.height = Math.round(H * D);
+    ctx.setTransform(D, 0, 0, D, 0, 0);
+  }
+
+  // ---------- stand-in figure (original shapes in the show's palette) ----------
+  // o: { pose 0|1, boil seed|null, panelDx px, eyes bool, mono color|null }
+  function drawFigure(g, o) {
+    const u = H * .5, cx = W / 2, top = H * .40, mono = o.mono;
+    const f = c => mono || c;
+    // hair: a fan of crimson shards (every 4th one black), drawn first
+    const r = o.boil != null ? rng(o.boil) : null;
+    const hx = cx, hy = top + u * .05;
+    for (let i = 0; i < 13; i++) {
+      let a = -Math.PI * (.08 + .84 * i / 12), len = u * (.26 + .2 * Math.abs(Math.sin(i * 1.7))), w = u * .07;
+      if (i === 0 || i === 12) { a += i === 0 ? .55 : -.55; len *= 1.25; }          // two long shards hanging down the sides
+      if (r) { a += (r() - .5) * .25; len *= .8 + r() * .4; w *= .7 + r() * .6; }
+      const nx = -Math.sin(a), ny = Math.cos(a);
+      g.beginPath(); g.moveTo(hx + nx * w / 2, hy + ny * w / 2);
+      g.lineTo(hx + Math.cos(a) * len, hy + Math.sin(a) * len);
+      g.lineTo(hx + Math.cos(a) * len * .55 - nx * w * .9, hy + Math.sin(a) * len * .55 - ny * w * .9);
+      g.lineTo(hx - nx * w / 2, hy - ny * w / 2); g.closePath();
+      g.fillStyle = f(i % 4 === 2 ? BLACK : CRIMSON); g.fill();
+    }
+    // body
+    g.beginPath();
+    g.moveTo(cx - u * .012, top + u * .12); g.lineTo(cx + u * .012, top + u * .12);
+    g.lineTo(cx + u * .085, top + u * .17); g.lineTo(cx + u * .05, top + u * .42); g.lineTo(cx + u * .07, top + u * .5);
+    g.lineTo(cx + u * .045, top + u * .98); g.lineTo(cx + u * .014, top + u * .98); g.lineTo(cx, top + u * .56);
+    g.lineTo(cx - u * .014, top + u * .98); g.lineTo(cx - u * .045, top + u * .98);
+    g.lineTo(cx - u * .07, top + u * .5); g.lineTo(cx - u * .05, top + u * .42); g.lineTo(cx - u * .085, top + u * .17);
+    g.closePath(); g.fillStyle = f(BLACK); g.fill();
+    // flat crimson panels: chest band, hip brief, shins
+    g.fillStyle = f(CRIMSON);
+    g.beginPath(); g.moveTo(cx - u * .075, top + u * .21); g.lineTo(cx + u * .075, top + u * .21); g.lineTo(cx + u * .06, top + u * .26); g.lineTo(cx - u * .06, top + u * .26); g.fill();
+    g.beginPath(); g.moveTo(cx - u * .066, top + u * .47); g.lineTo(cx + u * .066, top + u * .47); g.lineTo(cx, top + u * .56); g.fill();
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx + s * u * .04, top + u * .72); g.lineTo(cx + s * u * .02, top + u * .74); g.lineTo(cx + s * u * .022, top + u * .9); g.lineTo(cx + s * u * .04, top + u * .86); g.fill(); }
+    // arms: pose 0 hanging straight, pose 1 hands on hips
+    g.strokeStyle = f(BLACK); g.lineWidth = u * .024; g.lineJoin = "miter"; g.lineCap = "butt";
+    for (const s of [-1, 1]) {
+      g.beginPath(); g.moveTo(cx + s * u * .08, top + u * .18);
+      if (o.pose === 0) g.lineTo(cx + s * u * .105, top + u * .56);
+      else { g.lineTo(cx + s * u * .19, top + u * .35); g.lineTo(cx + s * u * .072, top + u * .47); }
+      g.stroke();
+    }
+    // head + green face panel
+    const px = cx + (o.panelDx || 0);
+    g.beginPath(); g.ellipse(cx, top + u * .065, u * .05, u * .06, 0, 0, Math.PI * 2); g.fillStyle = f(BLACK); g.fill();
+    g.beginPath(); g.moveTo(px - u * .065, top + u * .035); g.lineTo(px + u * .065, top + u * .035);
+    g.lineTo(px + u * .05, top + u * .08); g.lineTo(px - u * .05, top + u * .08); g.closePath();
+    g.fillStyle = f(GREEN); g.fill();
+    if (o.eyes && !mono) for (const s of [-1, 1]) {
+      const ex = px + s * u * .028, ey = top + u * .057;
+      g.beginPath(); g.ellipse(ex, ey, u * .02, u * .011, 0, 0, Math.PI * 2); g.fillStyle = "#00030D"; g.fill();
+      g.beginPath(); g.arc(ex, ey, u * .0075, 0, Math.PI * 2); g.fillStyle = IRIS; g.fill();
+      g.beginPath(); g.arc(ex, ey, u * .0037, 0, Math.PI * 2); g.fillStyle = PUPIL; g.fill();
+    }
+  }
+
+  // ---------- the show's bar glitch ----------
+  // I = 0..1 intensity. 3–12 thin horizontal bars sticking out sideways, green and crimson,
+  // sometimes a dense stacked block beside her face; some steps are almost clean (bursts).
+  function drawBars(step, I) {
+    if (I <= 0) return;
+    const r = rng(step * 7919 + run * 104729), u = H * .5, top = H * .40, cx = W / 2;
+    let n;
+    if (r() < .22) n = r() < .5 ? 0 : 1;                       // a nearly clean step
+    else n = Math.round(3 + 9 * I * r());
+    const bar = (y, h, x0, len, dir, color) => { ctx.fillStyle = color; ctx.fillRect(dir > 0 ? x0 : x0 - len, y, len, h); };
+    for (let i = 0; i < n; i++) {
+      const y = top - u * .3 + r() * u * 1.3, h = H * (.003 + .022 * r() * r());
+      const dir = r() < .5 ? -1 : 1, x0 = cx + dir * u * (r() * .18) - dir * u * .05;
+      bar(y, h, x0, W * (.05 + .28 * r()), dir, r() < .55 ? GREEN : CRIMSON);
+    }
+    if (r() < .3 * I) {                                         // dense block beside the face
+      const dir = r() < .5 ? -1 : 1, y0 = top + u * (.0 + r() * .06);
+      const k = 8 + Math.floor(r() * 3);
+      for (let i = 0; i < k; i++) bar(y0 + i * H * .006, H * (.003 + .002 * r()), cx + dir * u * .04, W * (.08 + .18 * r()), dir, r() < .8 ? GREEN : CRIMSON);
+    }
+  }
+
+  // ---------- "now in app" pose glitch (copy of drawPoseGlitch in CapriSprite.kt) ----------
+  const canvases = {};
+  function poseCanvas(pose, mono) {
+    const key = pose + (mono || "") + W + "x" + H;
+    if (canvases[key]) return canvases[key];
+    const c = document.createElement("canvas"); c.width = cv.width; c.height = cv.height;
+    const g = c.getContext("2d"); g.setTransform(D, 0, 0, D, 0, 0);
+    drawFigure(g, { pose, eyes: true, mono });
+    return canvases[key] = c;
+  }
+  function drawAppGlitch(from, to, p, seed) {
+    const r = rng(seed * 7 + (p < .5 ? 0 : 997));
+    const split = (6 + 4 * (r() * 2 - 1)) * (r() < .5 ? 1 : -1);
+    let y = 0;
+    while (y < H) {
+      const sh = H * (.012 + .045 * r()), jump = r() * 2 - 1, dx = Math.abs(jump) > .45 ? jump * W * .14 : 0;
+      const showNew = r() < p, crimsonOnly = r() > .775, gone = r() > .9;
+      if (!gone) {
+        const pose = showNew ? to : from;
+        ctx.drawImage(poseCanvas(pose, "#FF3C68"), 0, y * D, cv.width, sh * D, dx + split, y, W, sh);
+        if (!crimsonOnly) ctx.drawImage(poseCanvas(pose, null), 0, y * D, cv.width, sh * D, dx, y, W, sh);
+      }
+      y += sh;
+    }
+  }
+
+  // ---------- timelines ----------
+  const HOLD_BEFORE = 600, HOLD_AFTER = 1300;
+  function length() {
+    if (mode === "appear") return appearLen + 1400;
+    return HOLD_BEFORE + (poseStyle === "now" ? 150 : poseStyle === "bars" || poseStyle === "mix" ? 250 : 0) + HOLD_AFTER;
+  }
+
+  function drawAppear(t) {
+    const L = appearLen, step = Math.floor(t / STEP);
+    if (t < L * .35) {                                          // dimmed crimson silhouette inside the bars
+      drawFigure(ctx, { pose: 0, boil: step, mono: CRIMSON_DIM });
+      drawBars(step, 1);
+      return;
+    }
+    const I = t < L * .6 ? 1 : Math.max(0, 1 - (t - L * .6) / (L * .4));
+    const heavy = I > .3, r = rng(step * 31 + run);
+    const panelDx = heavy ? (r() < .5 ? -1 : 1) * W * (.02 + .03 * r()) : 0;
+    const eyes = !(heavy && r() < .15);                          // eyes drop out now and then
+    // after it settles: one double blink (83 ms closed, 333 ms apart)
+    const after = t - L, blink = (after > 450 && after < 533) || (after > 783 && after < 866);
+    drawFigure(ctx, { pose: 0, boil: heavy ? step : null, panelDx, eyes: eyes && !blink });
+    drawBars(step, I);
+  }
+
+  function drawPose(t) {
+    const to = 1 - fromPose;
+    if (t < HOLD_BEFORE) { drawFigure(ctx, { pose: fromPose, eyes: true }); return; }
+    const k = t - HOLD_BEFORE;
+    const barsAt = s => drawBars(s + 5000, [.8, .5, .25][s] || 0);
+    if (poseStyle === "mix" && k < 250) {                        // strips hide the jump, green + crimson bars on top
+      if (k < 150) drawAppGlitch(fromPose, to, k / 150, run); else drawFigure(ctx, { pose: to, eyes: true });
+      barsAt(Math.floor(k / STEP));
+      return;
+    }
+    if (poseStyle === "now" && k < 150) { drawAppGlitch(fromPose, to, k / 150, run); return; }
+    drawFigure(ctx, { pose: to, eyes: true });                   // clean snap: the new drawing, instantly
+    if (poseStyle === "bars" && k < 250) drawBars(Math.floor(k / STEP) + 5000, [.8, .5, .25][Math.floor(k / STEP)] || 0);
+  }
+
+  function frame(now) {
+    const t = (now - t0) * (slow ? .25 : 1), len = length();
+    ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
+    if (mode === "appear") drawAppear(Math.min(t, len)); else drawPose(Math.min(t, len));
+    tag.textContent = Math.round(Math.min(t, len)) + " ms";
+    if (t < len) { raf = requestAnimationFrame(frame); return; }
+    if (loop) nextTimer = setTimeout(play, 900);
+  }
+
+  function play() {
+    cancelAnimationFrame(raf); clearTimeout(nextTimer);
+    run++; if (mode === "pose") fromPose = run % 2;
+    readout();
+    if (reduced && !loop) {                                       // one still frame mid-glitch instead of strobing
+      ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
+      if (mode === "appear") drawAppear(appearLen * .5); else drawPose(HOLD_BEFORE + 40);
+      return;
+    }
+    t0 = performance.now(); raf = requestAnimationFrame(frame);
+  }
+
+  // ---------- controls + readout ----------
+  const VARIANTS = {
+    appear: [["show", "Show length 2 s"], ["mid", "Middle 1 s"], ["pick", "Pick 0.7 s"], ["short", "Short 0.5 s"]],
+    pose: [["mix", "Strips + green"], ["bars", "Snap + bars"], ["clean", "Clean snap"], ["now", "Now in app"]],
+  };
+  const APPEAR_MS = { show: 2000, mid: 1000, pick: 700, short: 500 };
+  function renderVariants() {
+    variants.innerHTML = '<span class="row-label">Version</span>';
+    for (const [id, label] of VARIANTS[mode]) {
+      const b = document.createElement("button"); b.id = "v-" + id; b.textContent = label;
+      const on = mode === "appear" ? APPEAR_MS[id] === appearLen : id === poseStyle;
+      b.setAttribute("aria-pressed", String(on));
+      b.addEventListener("click", () => {
+        if (mode === "appear") appearLen = APPEAR_MS[id]; else poseStyle = id;
+        renderVariants(); play();
+      });
+      variants.appendChild(b);
+    }
+  }
+  function readout() {
+    const L = appearLen, ms = x => Math.round(x) + " ms";
+    let title, items;
+    if (mode === "appear") {
+      title = `She appears · ${ms(L)} glitch`;
+      items = [
+        `0–${ms(L * .35)}: dim crimson silhouette, bars at full strength`,
+        `${ms(L * .35)}: hard cut to her real colors`,
+        `${ms(L * .35)}–${ms(L * .6)}: heavy bars, hair shards jump, face panel jumps 2–5% of the screen, eyes drop out now and then`,
+        `${ms(L * .6)}–${ms(L)}: bars thin out to nothing`,
+        `bars: 3–12 per step, 0.3–2.5% of screen height, up to 33% of its width, green + crimson`,
+        `new bar layout every 83 ms; about 1 step in 5 is almost clean`,
+        `then still, with one double blink (83 ms, 333 ms apart)`,
+      ];
+      if (L < 2000) items.push("shorter version: same steps squeezed into " + ms(L));
+    } else if (poseStyle === "mix") {
+      title = "Pose change · strips + green";
+      items = ["0–150 ms: her body torn into horizontal slices (like now in the app), so the jump to the new pose is hidden", "at the same time: green + crimson bars around her, 3 steps of 83 ms at 80%, 50%, 25% strength", "150–250 ms: new pose is clean, the last bars fade out", "total 250 ms"];
+    } else if (poseStyle === "now") {
+      title = "Pose change · now in the app";
+      items = ["150 ms: her body torn into horizontal slices, crimson copy offset 6–10 px", "slices re-roll once at 75 ms", "this is what the app does today on every pose change"];
+    } else if (poseStyle === "clean") {
+      title = "Pose change · clean snap";
+      items = ["0 ms: the new pose replaces the old one instantly", "no slices, no bars", "this is how the show changes her expressions"];
+    } else {
+      title = "Pose change · snap + bars";
+      items = ["0 ms: the new pose replaces the old one instantly", "then 3 steps of bars (83 ms each, 250 ms total) at 80%, 50%, 25% strength", "her body is not sliced; the bars sit around her"];
+    }
+    rTitle.textContent = title;
+    rList.innerHTML = items.map(s => `<li>${s}</li>`).join("");
+  }
+
+  const setMode = m => {
+    mode = m;
+    document.getElementById("m-appear").setAttribute("aria-pressed", String(m === "appear"));
+    document.getElementById("m-pose").setAttribute("aria-pressed", String(m === "pose"));
+    renderVariants(); play();
+  };
+  document.getElementById("m-appear").addEventListener("click", () => setMode("appear"));
+  document.getElementById("m-pose").addEventListener("click", () => setMode("pose"));
+  document.getElementById("replay").addEventListener("click", play);
+  slowBtn.addEventListener("click", () => { slow = !slow; slowBtn.setAttribute("aria-pressed", String(slow)); play(); });
+  loopBtn.addEventListener("click", () => { loop = !loop; loopBtn.setAttribute("aria-pressed", String(loop)); if (loop) play(); });
+  new ResizeObserver(() => { resize(); for (const k in canvases) delete canvases[k]; }).observe(phone);
+
+  resize(); renderVariants(); play();
+})();
+</script>

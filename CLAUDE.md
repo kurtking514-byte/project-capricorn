@@ -46,6 +46,7 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`
 
 | File | What it does |
 |---|---|
+| `CAPRI_REFERENCE.md` | Measured design + motion reference from the show (colors, timings, effects). Read it for any Capri look/motion work |
 | `MainActivity.kt` | Launcher activity (HOME intent) |
 | `ui/HomeScreen.kt` | Home: Capri, speech bubble, HUD clock, chatbox, dock |
 | `ui/BootOverlay.kt` | Wordless boot animation |
@@ -101,6 +102,12 @@ Boot preview is its own small page: `preview/boot-lab.html`, published at https:
 - [x] C3 (2026-11-18, compiles; not seen on phone) Red hit on commands: when a chat reply actually does something (`CapriBrain.done()` → `consumeActed()` → `commandId`), the home screen shows full-screen crimson 70 ms, gap 40 ms, crimson slash 60 ms; her new pose glitches in. Apps opened from chat launch 180 ms later (`launchSoon`) so the hit is visible
 - [x] C4 (2026-11-18, compiles; not seen on phone) Time of day (`CapriTime` / `DayPeriod` in `ui/CapriSprite.kt`, checked once a minute): morning 5–10 brisk (idle timing ×0.7, sway ×1.1), day normal, evening 18–23 slower (×1.3, sway ×0.85), night 0–4 drowsy half-closed eyes (×1.6, sway ×0.6). At night, 25 s with no poke/chat → she dozes standing, eyes closed; a poke wakes her annoyed (`CapriBrain.wakeUp()`). No lying down
 - [x] C5 (2026-11-18, compiles; not seen on phone) Phone reactions, home screen only, after the boot: charger plugged in → smug smirk + line; battery 15% or lower (not charging) → arms crossed + line, once until it goes back above 20% or is plugged in; new notification → she looks toward the top (`idle_look_left`) and says which app it is from (never reads the text), at most one every 10 s. Notifications need Notification access: chat command `notifs` opens it (`overlay/CapriNotifListener.kt`). Any reaction wakes her if she was dozing
+
+### Phase 2D — Copy the show's motion (from `CAPRI_REFERENCE.md`, user chose "copy the show" 2026-11-23)
+- [x] D1 (2026-11-23, builds; not seen on phone) Stillness + snaps: removed sway, breathing and hair ripple from `CapriMesh.fill` (home + overlay), removed the spring kick on every pose change. Then (same day) also removed the phone-tilt lean (sensor no longer read) and the poke squash. `CapriMesh.fill` is now a flat still grid; pokes still trigger her reaction lines/poses
+- [x] D2 (2026-11-23, builds; not seen on phone) Blink: eyes closed 83 ms, no half-lid, gap 2.5–7 s, 30% double blink 333 ms apart (`BLINK_*` constants in `ui/CapriSprite.kt`, overlay uses the same). Blinks snap with no fade/glitch (before, reopening to neutral triggered the pose glitch). Night drowsy half-lid kept
+- [x] D3 (2026-11-23, builds; not seen on phone) Talking mouth: `idle_mouth_wide` 167 ms, then `idle_mouth_small` (2 of 3) or closed/neutral (1 of 3) 83 ms, repeat; ends closed. `idle_mouth_round` no longer used (not in the show). Mouth swaps snap, no fade/glitch. Wave keeps its own 105 ms step (`MOUTH_*` constants in `ui/CapriSprite.kt`)
+- [x] D4 (2026-11-23, builds; not seen on phone) Glitch: green + crimson horizontal bar bursts, designed in `preview/glitch-lab.html` (https://claude.ai/artifact/U7JnHY6Lbm6AjRuBpRk5oB). User picks: **pose change = "Strips + green"** (150 ms slices with crimson split hide the jump, plus bars in 3 steps of 83 ms at 80/50/25%, 250 ms total; `POSE_*` + `drawGlitchBars` in `ui/CapriSprite.kt`), and **she appears = 0.5 s** ("closest to the show"): in the boot she is a dim crimson silhouette (0–35%), then real colors with heavy bars and eyes dropping out, at 0.3 s she tears into `idle_wave_raise` (0.15 s strips) while the bars fade; lightning lands at ~0.49 s, as the bars end (`APPEAR`, `RAISE_AT`, `TO_RAISED` in `ui/BootOverlay.kt`). Boot is ~0.23 s longer than before. Not done (sprite can't do it): hair boil and face-panel jump
 
 ### Phase 3 — Commands & gestures
 - [ ] 3.1 Gestures on home Capri: double-tap screenshot, triple-tap lock
@@ -164,6 +171,9 @@ Making her feel alive:
   neutral, smirk, hand on hip, arms crossed, shrug, thinking, look left/right, wave (+ blink/mouth/wave building blocks).
   Never add sitting, crouching, lying-down, leaning or chin-rest poses, or frames with odd eyes
   (surprised, excited, attentive, sleepy, skeptical, laughing, annoyed, point, happy = open grin). Never suggest them again.
-- Flat colors, no gradients/glow. Smooth motion, no stop-motion snaps. Full body on home, no box around her.
+- Flat colors, no gradients/glow. Full body on home, no box around her.
+- **Motion copies the show** (user choice 2026-11-23, replaces the old "smooth motion, no snaps" rule):
+  she mostly holds still, expressions snap (0–83 ms) and hold, blinks are quick, hair is rigid.
+  Numbers in `CAPRI_REFERENCE.md`. Don't add constant sway/breathing/hair ripple back without asking.
 - Capri's voice: playful, cocky, teasing. Never polite-assistant tone.
 - Package ID `io.github.kurtking514_byte.capricorn` must never change.
