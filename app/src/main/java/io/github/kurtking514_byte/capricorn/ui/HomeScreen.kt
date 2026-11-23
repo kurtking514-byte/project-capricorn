@@ -103,6 +103,7 @@ fun HomeScreen(
     onLaunch: (AppEntry) -> Unit,
     onToggleDock: (AppEntry) -> Unit,
     onAppInfo: (AppEntry) -> Unit,
+    onGrabAction: (AppEntry, GrabAction) -> Unit,
 ) {
     val openDrawer by rememberUpdatedState(onOpenDrawer)
     val keyboard = LocalSoftwareKeyboardController.current
@@ -240,6 +241,7 @@ fun HomeScreen(
                             onToggleDock = onToggleDock,
                             onAppInfo = onAppInfo,
                             modifier = Modifier.weight(1f),
+                            draggable = true,
                         )
                     }
                 }
@@ -287,6 +289,9 @@ fun HomeScreen(
             }
             Spacer(Modifier.height(10.dp))
         }
+
+        // 3.3: the app you drag, the app she holds + her options menu, the pin lightning
+        GrabLayer(inDock = { it.key in dockKeys }, onAction = onGrabAction)
 
         // Crimson flash whenever she does or says something (no touch handling, so it never blocks taps).
         Canvas(Modifier.fillMaxSize()) {
@@ -614,6 +619,7 @@ private fun Dock(
                             onLaunch = onLaunch,
                             onToggleDock = onToggleDock,
                             onAppInfo = onAppInfo,
+                            draggable = true,
                         )
                     }
                 }

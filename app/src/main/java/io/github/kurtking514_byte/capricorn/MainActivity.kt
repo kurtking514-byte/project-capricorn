@@ -9,6 +9,7 @@ import android.os.BatteryManager
 import android.os.Bundle
 import android.os.UserHandle
 import android.widget.Toast
+import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
@@ -38,6 +39,8 @@ import io.github.kurtking514_byte.capricorn.data.AppRepository
 import io.github.kurtking514_byte.capricorn.data.Prefs
 import io.github.kurtking514_byte.capricorn.overlay.CapriNotifListener
 import io.github.kurtking514_byte.capricorn.ui.AppDrawer
+import io.github.kurtking514_byte.capricorn.ui.AppGrab
+import io.github.kurtking514_byte.capricorn.ui.GrabAction
 import io.github.kurtking514_byte.capricorn.ui.BootOverlay
 import io.github.kurtking514_byte.capricorn.ui.CapriSkin
 import io.github.kurtking514_byte.capricorn.ui.CapriTime
@@ -51,7 +54,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var repo: AppRepository
     private lateinit var prefs: Prefs
 
-    private var apps by mutableStateOf<List<AppEntry>>(emptyList())
+    private var allApps by mutableStateOf<List<AppEntry>>(emptyList())
+    private var hidden by mutableStateOf<Set<String>>(emptySet())     // 3.3: hidden by dragging onto her
+    private val apps: List<AppEntry> get() = allApps.filter { it.key !in hidden }
     private var dockKeys by mutableStateOf<List<String>>(emptyList())
     private var launchCounts by mutableStateOf<Map<String, Int>>(emptyMap())
     private var drawerOpen by mutableStateOf(false)
@@ -137,6 +142,9 @@ class MainActivity : ComponentActivity() {
         brain = CapriBrain(this)
         skin = CapriSkin.load(this)
         dockKeys = prefs.dock()
+        hidden = prefs.hidden()
+        AppGrab.onHover = { over -> if (over) say(brain.grabHover()) }
+        AppGrab.onDrop = { say(brain.grab(it.label)) }
         launchCounts = prefs.launchCounts()
         getSystemService(LauncherApps::class.java).registerCallback(packageCallback)
         ContextCompat.registerReceiver(
@@ -169,7 +177,10 @@ class MainActivity : ComponentActivity() {
                         mood = mood,
                         resumeTick = resumeTick,
                         commandId = commandId,
-                        onSubmit = { say(brain.respond(it, apps, ::launchSoon) { drawerOpen = true }) },
+                        onSubmit = {
+                            if (it.trim().equals("unhide", ignoreCase = true)) unhideAll()
+                            else say(brain.respond(it, apps, ::launchSoon) { drawerOpen = true })
+                        },
                         onPoke = { held ->
                             say(when {
                                 CapriTime.wake() -> brain.wakeUp()      // C4: she was dozing
@@ -181,6 +192,7 @@ class MainActivity : ComponentActivity() {
                         onLaunch = { launchApp(it) },
                         onToggleDock = ::toggleDock,
                         onAppInfo = ::openAppInfo,
+                        onGrabAction = ::grabAction,
                     )
                     AnimatedVisibility(
                         visible = drawerOpen,
@@ -235,7 +247,7 @@ class MainActivity : ComponentActivity() {
 
     private fun reloadApps() {
         loadJob?.cancel()
-        loadJob = lifecycleScope.launch { apps = repo.loadApps() }
+        loadJob = lifecycleScope.launch { allApps = repo.loadApps() }
     }
 
     /** Opens an app from chat a moment later, so the red hit (C3) shows before the app covers it. */
@@ -265,6 +277,53 @@ class MainActivity : ComponentActivity() {
             else -> dockKeys + app.key
         }
         prefs.setDock(dockKeys)
+    }
+
+    /** 3.3: what she does with an app you dragged onto her. */
+    private fun grabAction(app: AppEntry, action: GrabAction) {
+        AppGrab.held = null
+        when (action) {
+            GrabAction.PIN -> {
+                val was = app.key in dockKeys
+                toggleDock(app)
+                val slot = dockKeys.indexOf(app.key)
+                say(when {
+                    was -> brain.grabUnpinned()
+                    slot < 0 -> brain.grabDockFull()
+                    else -> brain.grabPinned().also { AppGrab.strike(slot) }   // lightning onto the new slot
+                })
+            }
+            GrabAction.INFO -> {
+                say(brain.grabInfo())
+                openAppInfo(app)
+            }
+            GrabAction.UNINSTALL -> {
+                say(brain.grabUninstall())
+                try {
+                    startActivity(Intent(Intent.ACTION_DELETE, Uri.fromParts("package", app.packageName, null)))
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Couldn't uninstall ${app.label}", Toast.LENGTH_SHORT).show()
+                }
+            }
+            GrabAction.HIDE -> {
+                hidden = hidden + app.key
+                prefs.setHidden(hidden)
+                if (app.key in dockKeys) {
+                    dockKeys = dockKeys - app.key
+                    prefs.setDock(dockKeys)
+                }
+                say(brain.grabHidden())
+            }
+            GrabAction.CANCEL -> say(brain.grabCancel())
+        }
+    }
+
+    /** Chat "unhide": every hidden app comes back. */
+    private fun unhideAll() {
+        val n = hidden.size
+        hidden = emptySet()
+        prefs.setHidden(hidden)
+        say(brain.unhidden(n))
     }
 
     private fun openAppInfo(app: AppEntry) {

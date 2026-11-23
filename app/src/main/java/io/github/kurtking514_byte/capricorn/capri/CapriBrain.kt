@@ -65,6 +65,19 @@ class CapriBrain(private val context: Context) {
         }
     }
 
+    // 3.3: drag an app onto her and she grabs it
+    fun grabHover(): String = pick("Gimme.", "Hand it over.", "Ooh, for me?").also { mood = "smug" }
+    fun grab(label: String): String = done(pick("Got $label. What's the plan?", "$label, huh? Your call, boss."), "smirk")
+    fun grabPinned(): String = done(pick("Pinned. Front row.", "Done. Now it's VIP."), "smirk")
+    fun grabUnpinned(): String = pick("Off the dock. Demoted.", "Benched. It'll live.").also { mood = "shrug" }
+    fun grabDockFull(): String = pick("Dock's full. Unpin something first.", "No room up front. Kick someone out.").also { mood = "annoyed" }
+    fun grabInfo(): String = pick("Pulling its file. Nosy, aren't we?", "Fine, let's see its secrets.").also { mood = "smug" }
+    fun grabUninstall(): String = pick("Android will ask if you're sure. I'm already sure.", "Say goodbye. Android wants a yes first.").also { mood = "smug" }
+    fun grabHidden(): String = done(pick("Gone. Our little secret. Say \"unhide\" to get it back.", "Hidden. Nobody saw nothing. \"unhide\" brings it back."), "smirk")
+    fun grabCancel(): String = pick("Fine, keep it.", "Never mind? Typical.").also { mood = "shrug" }
+    fun unhidden(n: Int): String = if (n == 0) pick("Nothing's hidden. You're an open book.").also { mood = "shrug" }
+        else done(if (n == 1) "One app back from the shadows." else "$n apps back from the shadows.", "smirk")
+
     /** C4: poked while she was dozing late at night. */
     fun wakeUp(): String = pick(
         "Wha— I wasn't sleeping. I was buffering.",
@@ -270,7 +283,7 @@ class CapriBrain(private val context: Context) {
             return done(pick("I know, I'm the best.", "You owe me one. I'm keeping count."), "sass")
         }
         if (Regex("\\b(help|what can you do)\\b").containsMatchIn(t)) {
-            return done("Say an app's name and I open it. Also: alarm 7:30, timer 10 min, photo, flashlight, screenshot, lock, apps, notifs. Say \"overlay\" and I follow you into other apps.", "neutral")
+            return done("Say an app's name and I open it. Also: alarm 7:30, timer 10 min, photo, flashlight, screenshot, lock, apps, notifs, unhide. Drag an app onto me and I'll handle it. Say \"overlay\" and I follow you into other apps.", "neutral")
         }
 
         // apps

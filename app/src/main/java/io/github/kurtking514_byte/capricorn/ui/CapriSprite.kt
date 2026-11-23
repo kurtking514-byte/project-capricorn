@@ -49,6 +49,9 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.Lifecycle
@@ -500,9 +503,11 @@ fun CapriSpriteFigure(
         headTop(size.height - CapriMeshPainter.GROUND * h + skin.top(poseForHead) * h)
     }
 
+    val origin = remember { floatArrayOf(0f, 0f) }      // canvas position on screen, for AppGrab
     Canvas(
         modifier
             .onSizeChanged { canvas = it }
+            .onGloballyPositioned { val p = it.positionInRoot(); origin[0] = p.x; origin[1] = p.y }
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { poke(false) },
@@ -514,6 +519,14 @@ fun CapriSpriteFigure(
         val a = fade.value
         val from = fromName?.let { skin.bitmap(it) }
         val to = skin.bitmap(shownName)
+        // 3.3: tell AppGrab where her body is (middle 60% of the frame, hair top to feet), on screen
+        to?.let {
+            val fh = painter.frameHeight(size, it, topInset = topInset)
+            val fw = fh * it.width / it.height
+            val left = origin[0] + (size.width - fw) / 2f
+            val top = origin[1] + size.height - CapriMeshPainter.GROUND * fh
+            AppGrab.herBox = Rect(left + 0.2f * fw, top + 0.07f * fh, left + 0.8f * fw, top + CapriMeshPainter.GROUND * fh)
+        }
         if (glitching && from != null && to != null) {
             val ms = a * POSE_GLITCH_MS
             if (ms < POSE_STRIPS_MS) drawPoseGlitch(painter, from, to, ms / POSE_STRIPS_MS, glitchSeed, t, tilt, 0f, topInset)

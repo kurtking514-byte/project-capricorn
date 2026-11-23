@@ -1,0 +1,554 @@
+<title>Capri Grab Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* Same look as the Boot Lab and Glitch Lab: one phone, controls, a readout. Single dark look. */
+  :root {
+    color-scheme: dark;
+    --ink: #080E15;
+    --panel: #0C1A22;
+    --crimson: #FF3C68;
+    --cyan: #8EF5ED;
+    --acid: #F4ED75;
+    --text: #E6F4F4;
+    --dim: #7E949C;
+    --line: #1B2E38;
+    --display: "Exo 2", "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--ink); color: var(--text); font-family: var(--display);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 28px; box-sizing: border-box;
+  }
+  .wrap { max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font-weight: 800; font-size: 20px; letter-spacing: .02em; text-transform: uppercase; }
+  h1 span { color: var(--crimson); }
+  .step { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--acid); }
+  .phone {
+    position: relative; width: 100%; max-width: 100%; aspect-ratio: 9 / 19.5; background: var(--ink); border: 2px solid var(--line);
+    clip-path: polygon(0 14px, 14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px));
+    overflow: hidden; user-select: none; -webkit-user-select: none;
+  }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #fx { pointer-events: none; z-index: 5; }
+
+  /* speech bubble above her head */
+  .bubble {
+    position: absolute; left: 50%; top: 4%; transform: translateX(-50%); max-width: 78%; z-index: 2;
+    background: var(--panel); border: 1px solid var(--cyan); padding: 8px 12px;
+    font: 600 14px/1.35 var(--display); text-align: center;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+  .bubble b { display: block; font: 600 10px/1 var(--mono); letter-spacing: .14em; color: var(--crimson); margin-bottom: 4px; }
+  .sys {
+    position: absolute; right: 10px; top: 1.2%; z-index: 3; font: 600 10px/1 var(--mono); letter-spacing: .08em;
+    text-transform: uppercase; color: var(--acid);
+  }
+
+  /* app tiles: flat, cut corners, a letter in the app's color */
+  .app {
+    width: 100%; aspect-ratio: 1; display: grid; place-items: center; padding: 0;
+    background: var(--panel); border: 1.5px solid var(--c, var(--cyan)); color: var(--c, var(--cyan));
+    font: 800 20px/1 var(--display); cursor: grab; touch-action: none;
+    clip-path: polygon(0 20%, 20% 0, 100% 0, 100% 80%, 80% 100%, 0 100%);
+  }
+  .app.ghost { position: absolute; z-index: 4; pointer-events: none; cursor: grabbing; }
+  .empty {
+    width: 100%; aspect-ratio: 1; display: grid; place-items: center; color: var(--dim); font: 600 18px/1 var(--display);
+    border: 1.5px dashed var(--line);
+    clip-path: polygon(0 20%, 20% 0, 100% 0, 100% 80%, 80% 100%, 0 100%);
+  }
+  .pop { animation: pop 83ms steps(1) 1; }
+  @keyframes pop { 0% { box-shadow: 6px 0 0 var(--crimson); transform: translateX(-3px); } }
+  .slot { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+  .slot span { font: 400 10px/1 var(--mono); color: var(--dim); white-space: nowrap; }
+  .hidden-slot { visibility: hidden; }
+
+  .sugg { position: absolute; left: 8%; right: 8%; top: 70.5%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; z-index: 1; }
+  .sugg-label { position: absolute; left: 8%; top: 68%; font: 600 9px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+  .chat {
+    position: absolute; left: 5%; right: 5%; top: 80.5%; height: 5.2%; z-index: 1; display: flex; align-items: center; padding: 0 12px;
+    border: 1px solid var(--cyan); background: var(--panel); color: var(--dim); font-size: 13px;
+    clip-path: polygon(0 10px, 10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+  }
+  .dock { position: absolute; left: 8%; right: 8%; top: 88.5%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; z-index: 1; }
+
+  /* the grab menu */
+  .menu { position: absolute; z-index: 4; display: flex; flex-direction: column; gap: 6px; }
+  .menu .name { font: 600 10px/1.2 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--acid); }
+  .menu button { width: 100%; text-align: left; font-size: 12px; padding: 9px 10px; }
+  .menu button.danger { color: var(--crimson); }
+  .menu.panel {
+    left: 4%; right: 4%; top: 72%; bottom: 3%; background: var(--panel); border: 1px solid var(--cyan); padding: 12px;
+    clip-path: polygon(0 12px, 12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+  }
+  .menu.panel .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .menu.panel button { text-align: center; background: var(--ink); }
+
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row-label { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); width: 100%; }
+  button {
+    font: 600 13px/1 var(--display); letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text); background: var(--panel); border: 1px solid var(--line); padding: 11px 14px; cursor: pointer;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  button.primary { background: var(--crimson); color: var(--ink); border-color: var(--crimson); }
+  button[aria-pressed="true"] { border-color: var(--cyan); color: var(--cyan); }
+  button:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
+  .readout { background: var(--panel); border: 1px solid var(--line); padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .readout h2 { margin: 0; font: 600 12px/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--acid); }
+  ul { margin: 0; padding-left: 18px; font-family: var(--mono); font-size: 12px; line-height: 1.55; font-variant-numeric: tabular-nums; }
+  li::marker { color: var(--dim); }
+  .note { font-size: 13px; color: var(--dim); line-height: 1.5; margin: 0; }
+  .note b { color: var(--text); font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Capri <span>grab</span></h1>
+    <div class="step">Step 3.3 · drag an app onto her</div>
+  </header>
+
+  <div class="phone" id="phone">
+    <canvas id="c"></canvas>
+    <div class="bubble" id="bubble"><b>CAPRI</b><span id="line">Drag an app onto me. Go on.</span></div>
+    <div class="sys" id="sys"></div>
+    <div class="sugg-label">From search</div>
+    <div class="sugg" id="sugg"></div>
+    <div class="chat">what do you want to do?</div>
+    <div class="dock" id="dock"></div>
+    <canvas id="fx"></canvas>
+  </div>
+
+  <div class="row" role="group" aria-label="Menu style" id="variants">
+    <span class="row-label">Menu style</span>
+    <button id="v-side" aria-pressed="true">Beside her</button>
+    <button id="v-panel" aria-pressed="false">Bottom panel</button>
+  </div>
+  <div class="row">
+    <button class="primary" id="demo">Auto demo</button>
+    <button id="slow" aria-pressed="false">Slow ×4</button>
+    <button id="reset">Reset</button>
+  </div>
+
+  <div class="readout">
+    <h2 id="r-title">How the grab works</h2>
+    <ul id="r-list"></ul>
+  </div>
+
+  <p class="note">Drag any app (dock or "from search") onto her with your mouse or finger. Drop it anywhere else and it snaps back. Tap outside the menu to cancel. The hit timing is the app's command hit (C3), the strips + bars are the pose change you picked (D4). The figure is a plain stand-in; the app uses your skin.</p>
+</div>
+
+<script>
+(() => {
+  // Show colors (CAPRI_REFERENCE.md) + the app's own UI colors
+  const GREEN = "#00B144", CRIMSON = "#BC002B", BLACK = "#0E0A16", IRIS = "#0040A0", PUPIL = "#B3B3B3";
+  const INK = "#080E15", PANEL = "#0C1A22", PINK = "#FF3C68";
+  const STEP = 1000 / 12;                                  // 83 ms: the show's drawing rate
+
+  const phone = document.getElementById("phone");
+  const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+  const fxc = document.getElementById("fx"), fx = fxc.getContext("2d");
+  const lineEl = document.getElementById("line"), sysEl = document.getElementById("sys");
+  const dockEl = document.getElementById("dock"), suggEl = document.getElementById("sugg");
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const APPS = {
+    notes:  { name: "Notes",  c: "#F4ED75" }, camera: { name: "Camera", c: "#8EF5ED" },
+    music:  { name: "Music",  c: "#4FC3FF" }, maps:   { name: "Maps",   c: "#39FF88" },
+    mail:   { name: "Mail",   c: "#FF9F5A" }, files:  { name: "Files",  c: "#C9A2FF" },
+    clock:  { name: "Clock",  c: "#E6F4F4" },
+  };
+  let dock, sugg, menuStyle = "side";
+  const resetApps = () => { dock = ["notes", "camera", "music", null]; sugg = ["maps", "mail", "files", "clock"]; };
+  resetApps();
+
+  // ---------- virtual clock (so "Slow ×4" slows every effect) ----------
+  let vt = 0, last = performance.now(), speed = 1, queue = [];
+  const later = (ms, fn) => queue.push({ at: vt + ms, fn });
+
+  const rng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+
+  let W = 0, H = 0, D = 1;
+  const geo = () => { const u = H * .36, top = H * .345; return { u, top, cx: W / 2 }; };
+  function resize() {
+    const r = phone.getBoundingClientRect(); D = Math.min(devicePixelRatio || 1, 2);
+    W = r.width; H = r.height;
+    for (const c of [cv, fxc]) { c.width = Math.round(W * D); c.height = Math.round(H * D); }
+    ctx.setTransform(D, 0, 0, D, 0, 0); fx.setTransform(D, 0, 0, D, 0, 0);
+    for (const k in figCache) delete figCache[k];
+    if (menu) placeMenu();
+  }
+
+  // ---------- stand-in figure (same original shapes as the Glitch Lab) ----------
+  function drawFigure(g, o) {
+    const { u, top, cx } = geo(), mono = o.mono, f = c => mono || c;
+    const hx = cx, hy = top + u * .05;
+    for (let i = 0; i < 13; i++) {
+      let a = -Math.PI * (.08 + .84 * i / 12), len = u * (.26 + .2 * Math.abs(Math.sin(i * 1.7))), w = u * .07;
+      if (i === 0 || i === 12) { a += i === 0 ? .55 : -.55; len *= 1.25; }
+      const nx = -Math.sin(a), ny = Math.cos(a);
+      g.beginPath(); g.moveTo(hx + nx * w / 2, hy + ny * w / 2);
+      g.lineTo(hx + Math.cos(a) * len, hy + Math.sin(a) * len);
+      g.lineTo(hx + Math.cos(a) * len * .55 - nx * w * .9, hy + Math.sin(a) * len * .55 - ny * w * .9);
+      g.lineTo(hx - nx * w / 2, hy - ny * w / 2); g.closePath();
+      g.fillStyle = f(i % 4 === 2 ? BLACK : CRIMSON); g.fill();
+    }
+    g.beginPath();
+    g.moveTo(cx - u * .012, top + u * .12); g.lineTo(cx + u * .012, top + u * .12);
+    g.lineTo(cx + u * .085, top + u * .17); g.lineTo(cx + u * .05, top + u * .42); g.lineTo(cx + u * .07, top + u * .5);
+    g.lineTo(cx + u * .045, top + u * .98); g.lineTo(cx + u * .014, top + u * .98); g.lineTo(cx, top + u * .56);
+    g.lineTo(cx - u * .014, top + u * .98); g.lineTo(cx - u * .045, top + u * .98);
+    g.lineTo(cx - u * .07, top + u * .5); g.lineTo(cx - u * .05, top + u * .42); g.lineTo(cx - u * .085, top + u * .17);
+    g.closePath(); g.fillStyle = f(BLACK); g.fill();
+    g.fillStyle = f(CRIMSON);
+    g.beginPath(); g.moveTo(cx - u * .075, top + u * .21); g.lineTo(cx + u * .075, top + u * .21); g.lineTo(cx + u * .06, top + u * .26); g.lineTo(cx - u * .06, top + u * .26); g.fill();
+    g.beginPath(); g.moveTo(cx - u * .066, top + u * .47); g.lineTo(cx + u * .066, top + u * .47); g.lineTo(cx, top + u * .56); g.fill();
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx + s * u * .04, top + u * .72); g.lineTo(cx + s * u * .02, top + u * .74); g.lineTo(cx + s * u * .022, top + u * .9); g.lineTo(cx + s * u * .04, top + u * .86); g.fill(); }
+    g.strokeStyle = f(BLACK); g.lineWidth = u * .024; g.lineJoin = "miter"; g.lineCap = "butt";
+    for (const s of [-1, 1]) {
+      g.beginPath(); g.moveTo(cx + s * u * .08, top + u * .18);
+      if (o.pose === 0) g.lineTo(cx + s * u * .105, top + u * .56);
+      else if (s > 0) { g.lineTo(cx + s * u * .17, top + u * .3); g.lineTo(cx + s * u * .2, top + u * .22); }  // right hand up, holding the app
+      else { g.lineTo(cx + s * u * .19, top + u * .35); g.lineTo(cx + s * u * .072, top + u * .47); }          // left hand on hip
+      g.stroke();
+    }
+    const px = cx + (o.panelDx || 0);
+    g.beginPath(); g.ellipse(cx, top + u * .065, u * .05, u * .06, 0, 0, Math.PI * 2); g.fillStyle = f(BLACK); g.fill();
+    g.beginPath(); g.moveTo(px - u * .065, top + u * .035); g.lineTo(px + u * .065, top + u * .035);
+    g.lineTo(px + u * .05, top + u * .08); g.lineTo(px - u * .05, top + u * .08); g.closePath();
+    g.fillStyle = f(GREEN); g.fill();
+    if (!mono) for (const s of [-1, 1]) {
+      const ex = px + s * u * .028, ey = top + u * .057;
+      g.beginPath(); g.ellipse(ex, ey, u * .02, u * .011, 0, 0, Math.PI * 2); g.fillStyle = "#00030D"; g.fill();
+      g.beginPath(); g.arc(ex, ey, u * .0075, 0, Math.PI * 2); g.fillStyle = IRIS; g.fill();
+      g.beginPath(); g.arc(ex, ey, u * .0037, 0, Math.PI * 2); g.fillStyle = PUPIL; g.fill();
+    }
+  }
+  const figCache = {};
+  function figCanvas(pose, mono) {
+    const key = pose + (mono || "");
+    if (figCache[key]) return figCache[key];
+    const c = document.createElement("canvas"); c.width = cv.width; c.height = cv.height;
+    const g = c.getContext("2d"); g.setTransform(D, 0, 0, D, 0, 0); drawFigure(g, { pose, mono });
+    return figCache[key] = c;
+  }
+  // pose-change strips (copy of drawPoseGlitch in the app)
+  function drawStrips(from, to, p, seed) {
+    const r = rng(seed * 7 + (p < .5 ? 0 : 997));
+    const split = (6 + 4 * (r() * 2 - 1)) * (r() < .5 ? 1 : -1);
+    let y = 0;
+    while (y < H) {
+      const sh = H * (.012 + .045 * r()), jump = r() * 2 - 1, dx = Math.abs(jump) > .45 ? jump * W * .14 : 0;
+      const pose = r() < p ? to : from, crimsonOnly = r() > .775, gone = r() > .9;
+      if (!gone) {
+        ctx.drawImage(figCanvas(pose, PINK), 0, y * D, cv.width, sh * D, dx + split, y, W, sh);
+        if (!crimsonOnly) ctx.drawImage(figCanvas(pose, null), 0, y * D, cv.width, sh * D, dx, y, W, sh);
+      }
+      y += sh;
+    }
+  }
+  // the show's green + crimson bars around a point (same rules as the app's drawGlitchBars)
+  function drawBars(g, step, I, seed, cx, top, u) {
+    if (I <= 0) return;
+    const r = rng(step * 7919 + seed * 104729);
+    const n = r() < .22 ? (r() < .5 ? 0 : 1) : Math.round(3 + 9 * I * r());
+    for (let i = 0; i < n; i++) {
+      const y = top + r() * u * .95, h = H * (.003 + .022 * r() * r()), dir = r() < .5 ? -1 : 1;
+      const x0 = cx + dir * u * (r() * .18) - dir * u * .05, len = W * (.05 + .28 * r());
+      g.fillStyle = r() < .55 ? GREEN : CRIMSON; g.fillRect(dir > 0 ? x0 : x0 - len, y, len, h);
+    }
+  }
+
+  // ---------- app tiles ----------
+  function iconPath(g, x, y, s) {
+    const c = s * .2; g.beginPath();
+    g.moveTo(x, y + c); g.lineTo(x + c, y); g.lineTo(x + s, y); g.lineTo(x + s, y + s - c); g.lineTo(x + s - c, y + s); g.lineTo(x, y + s); g.closePath();
+  }
+  function drawIcon(g, id, x, y, s, color) {
+    const a = APPS[id];
+    iconPath(g, x, y, s); g.fillStyle = color || PANEL; g.fill();
+    if (color) return;
+    g.lineWidth = 1.5; g.strokeStyle = a.c; g.stroke();
+    g.fillStyle = a.c; g.font = `800 ${Math.round(s * .45)}px "Exo 2", system-ui, sans-serif`;
+    g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(a.name[0], x + s / 2, y + s / 2 + 1);
+  }
+  // sliced icon: 5 bands jump sideways with a crimson copy (the app's dock pop-in glitch)
+  function drawIconGlitch(id, x, y, s, p, seed) {
+    const bands = 5, bh = s / bands;
+    for (let b = 0; b < bands; b++) {
+      const r = rng(seed * 31 + b + (p < .5 ? 0 : 7))(), j = r * 2 - 1;
+      const dx = Math.abs(j) > .4 ? j * s * .35 * (1 - p) : 0;
+      fx.save(); fx.beginPath(); fx.rect(0, y + b * bh, W, bh + .5); fx.clip();
+      drawIcon(fx, id, x + dx + s * .08, y, s, PINK);
+      if (j > -.6) drawIcon(fx, id, x + dx, y, s);
+      fx.restore();
+    }
+  }
+  const heldBox = () => { const { u, top, cx } = geo(), s = u * .17; return { x: cx + u * .2 - s / 2, y: top + u * .2 - s, s }; };
+
+  function tile(id, where, i) {
+    const wrap = document.createElement("div"); wrap.className = "slot";
+    if (!id) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "+"; wrap.append(e); return wrap; }
+    const b = document.createElement("button"); b.className = "app"; b.textContent = APPS[id].name[0];
+    b.style.setProperty("--c", APPS[id].c); b.setAttribute("aria-label", APPS[id].name);
+    b.addEventListener("pointerdown", e => pressTile(e, id, where, i, b));
+    wrap.append(b);
+    if (where === "sugg") { const l = document.createElement("span"); l.textContent = APPS[id].name; wrap.append(l); }
+    return wrap;
+  }
+  function renderTiles(popSlot) {
+    dockEl.replaceChildren(...dock.map((id, i) => tile(id, "dock", i)));
+    suggEl.replaceChildren(...sugg.map((id, i) => tile(id, "sugg", i)));
+    if (popSlot != null) { const t = dockEl.children[popSlot]?.firstChild; if (t) { t.classList.add("pop"); setTimeout(() => t.classList.remove("pop"), STEP / speed); } }
+  }
+  const slotEl = (where, i) => (where === "dock" ? dockEl : suggEl).children[i];
+
+  // ---------- state + timeline ----------
+  let pose = 0, poseFrom = 0, poseAt = -1e9, poseSeed = 1;
+  let hitAt = -1e9, hitSeed = 1;
+  let held = null;                // { id, where, i, at }
+  let heldOut = null;             // { id, at } glitching out of her hand (hide)
+  let bolts = [];                 // { slot, at, seed }
+  let gaze = 0, hovering = false, drag = null, menu = null;
+
+  const say = s => { lineEl.textContent = s; };
+  const sys = (s, ms = 1600) => { sysEl.textContent = s; later(ms, () => { if (sysEl.textContent === s) sysEl.textContent = ""; }); };
+  const setPose = p => { if (p === pose) return; poseFrom = pose; pose = p; poseAt = vt; poseSeed++; };
+  const pick = (...a) => a[Math.floor(Math.random() * a.length)];
+
+  function overHer(x, y) { const { u, top, cx } = geo(); return x > cx - u * .26 && x < cx + u * .26 && y > top - u * .25 && y < top + u; }
+
+  // ---------- dragging ----------
+  function pressTile(e, id, where, i, el) {
+    if (menu || held) return;
+    e.preventDefault(); el.setPointerCapture(e.pointerId);
+    const r = phone.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
+    let started = false;
+    const move = ev => {
+      const x = ev.clientX - r.left, y = ev.clientY - r.top;
+      if (!started && Math.hypot(x - sx, y - sy) > 6) { started = true; startDrag(id, where, i, el); }
+      if (started) moveDrag(x, y);
+    };
+    const up = ev => {
+      el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up);
+      if (started) endDrag(ev.clientX - r.left, ev.clientY - r.top);
+    };
+    el.addEventListener("pointermove", move); el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
+  }
+  function startDrag(id, where, i, el) {
+    const box = el.getBoundingClientRect(), pr = phone.getBoundingClientRect();
+    const g = document.createElement("div"); g.className = "app ghost"; g.textContent = APPS[id].name[0];
+    g.style.setProperty("--c", APPS[id].c); g.style.width = box.width + "px";
+    phone.append(g); slotEl(where, i).classList.add("hidden-slot");
+    drag = { id, where, i, g, w: box.width, x: box.left - pr.left + box.width / 2, y: box.top - pr.top + box.height / 2 };
+    moveDrag(drag.x, drag.y);
+  }
+  function moveDrag(x, y) {
+    if (!drag) return;
+    drag.x = x; drag.y = y;
+    drag.g.style.left = (x - drag.w / 2) + "px"; drag.g.style.top = (y - drag.w / 2) + "px";
+    gaze = Math.max(-1, Math.min(1, (x - W / 2) / (W * .35)));             // she watches the app
+    const over = overHer(x, y);
+    if (over && !hovering) say(pick("Gimme.", "Hand it over.", "Ooh, for me?"));
+    if (!over && hovering) say("Closer. I don't bite. Much.");
+    hovering = over;
+  }
+  function endDrag(x, y) {
+    if (!drag) return;
+    const d = drag; drag = null; d.g.remove(); hovering = false; gaze = 0;
+    if (overHer(x, y)) grab(d.id, d.where, d.i);
+    else { slotEl(d.where, d.i).classList.remove("hidden-slot"); say(pick("Fine, keep it.", "Tease.")); }
+  }
+
+  // ---------- the grab ----------
+  function grab(id, where, i) {
+    hitAt = vt; hitSeed++;                       // C3 command hit: crimson 70 ms, gap 40, slash 60
+    setPose(1);                                  // D4 pose change: strips 150 ms + bars to 250 ms
+    held = { id, where, i, at: vt };
+    later(170, () => { say(`Got ${APPS[id].name}. What's the plan?`); openMenu(id, where); });
+  }
+  function release(back) {
+    closeMenu();
+    if (held && back) slotEl(held.where, held.i)?.classList.remove("hidden-slot");
+    held = null; setPose(0);
+  }
+
+  function openMenu(id, where) {
+    const pinned = dock.includes(id);
+    const opts = [
+      [pinned ? "Unpin" : "Pin to dock", () => pin(id, pinned)],
+      ["App info", () => { say(pick("Pulling its file. Nosy, aren't we?", "Fine, let's see its secrets.")); sys("→ Android App info"); release(true); }],
+      ["Uninstall", () => { say(pick("Android will ask if you're sure. I'm already sure.", "Say goodbye. Android wants a yes first.")); sys("→ Android uninstall dialog"); release(true); }, "danger"],
+      ["Hide", () => hide(id)],
+    ];
+    menu = document.createElement("div"); menu.className = "menu pop" + (menuStyle === "panel" ? " panel" : "");
+    const name = document.createElement("div"); name.className = "name"; name.textContent = APPS[id].name;
+    const grid = document.createElement("div"); grid.className = menuStyle === "panel" ? "grid" : "menu-col";
+    grid.style.cssText = menuStyle === "panel" ? "" : "display:flex;flex-direction:column;gap:6px";
+    for (const [label, fn, cls] of opts) {
+      const b = document.createElement("button"); b.textContent = label; if (cls) b.className = cls;
+      b.addEventListener("click", ev => { ev.stopPropagation(); fn(); }); grid.append(b);
+    }
+    menu.append(name, grid); menu.addEventListener("pointerdown", e => e.stopPropagation());
+    phone.append(menu); placeMenu();
+    setTimeout(() => menu && menu.classList.remove("pop"), STEP / speed);
+  }
+  function placeMenu() {
+    if (!menu || menuStyle === "panel") return;
+    const { u, top, cx } = geo(), left = Math.min(cx + u * .3, W - 104);   // at least 96 px wide, even on narrow phones
+    menu.style.left = left + "px"; menu.style.width = (W - left - 8) + "px"; menu.style.top = (top + u * .22) + "px";
+  }
+  function closeMenu() { if (menu) { menu.remove(); menu = null; } }
+
+  function pin(id, pinned) {
+    const from = held;
+    closeMenu();
+    if (pinned) {                                                 // unpin: it glitches out of the dock
+      const slot = dock.indexOf(id); dock[slot] = null;
+      if (from.where === "dock" && sugg.includes(null)) sugg[sugg.indexOf(null)] = id;
+      heldOut = { id, at: vt }; held = null; setPose(0);
+      say(pick("Off the dock. Demoted.", "Benched. It'll live."));
+      renderTiles();
+      return;
+    }
+    const slot = dock.indexOf(null);
+    if (slot < 0) { say("Dock's full. Unpin something first."); release(true); return; }
+    held = null; setPose(0);
+    bolts.push({ slot, at: vt, seed: Math.floor(Math.random() * 1e6) });   // lightning onto the free slot
+    say(pick("Pinned. Front row.", "Done. Now it's VIP."));
+    later(40, () => {                                            // first bolt lands, slot flashes, app pops in
+      dock[slot] = id; if (from.where === "sugg") sugg[from.i] = null;
+      sugg = sugg.filter(Boolean); while (sugg.length < 4) sugg.push(null);
+      renderTiles(slot);
+    });
+  }
+  function hide(id) {
+    const from = held; closeMenu();
+    heldOut = { id, at: vt }; held = null; setPose(0);
+    if (from.where === "dock") dock[from.i] = null;
+    else { sugg[from.i] = null; sugg = sugg.filter(Boolean); while (sugg.length < 4) sugg.push(null); }
+    say(pick("Gone. Our little secret.", "Hidden. Nobody saw nothing."));
+    sys("→ hidden (find it in the Vault, step 5.3)", 2200);
+    renderTiles();
+  }
+  // tap anywhere else = never mind
+  phone.addEventListener("pointerdown", () => { if (menu) { say(pick("Fine, keep it.", "Never mind? Typical.")); release(true); } });
+
+  // ---------- drawing ----------
+  function frame(now) {
+    vt += Math.min(50, now - last) * speed; last = now;
+    const due = queue.filter(q => q.at <= vt);                 // run due actions after taking them out,
+    queue = queue.filter(q => q.at > vt);                       // so actions they schedule are kept
+    due.forEach(q => q.fn());
+    const { u, top, cx } = geo();
+
+    ctx.clearRect(0, 0, W, H); fx.clearRect(0, 0, W, H);
+    const k = vt - poseAt;
+    if (k < 150) drawStrips(poseFrom, pose, k / 150, poseSeed);
+    else drawFigure(ctx, { pose, panelDx: gaze * u * .025 });
+    if (k < 250) { const s = Math.floor(k / STEP); drawBars(fx, s, [.8, .5, .25][s] || 0, poseSeed, cx, top - u * .2, u); }
+
+    // the app in her raised hand
+    if (held) {
+      const hk = vt - held.at, b = heldBox();
+      if (hk < 150) drawIconGlitch(held.id, b.x, b.y, b.s, hk / 150, hitSeed); else drawIcon(fx, held.id, b.x, b.y, b.s);
+    }
+    if (heldOut) {                                                // hide / unpin: glitches out with bars
+      const hk = vt - heldOut.at, b = heldBox();
+      if (hk < 150) drawIconGlitch(heldOut.id, b.x, b.y, b.s, 1 - hk / 150, hitSeed + 3);
+      if (hk < 250) { const s = Math.floor(hk / STEP); drawBars(fx, s, [.8, .5, .25][s] || 0, hitSeed + 9, b.x + b.s / 2, b.y - b.s, b.s * 3); }
+      else heldOut = null;
+    }
+
+    // lightning onto a dock slot (same as the boot: 3 bolts from the top, slot flashes crimson 70 ms)
+    bolts = bolts.filter(bl => {
+      const bs = vt - bl.at, el = dockEl.children[bl.slot]; if (!el) return false;
+      const pr = phone.getBoundingClientRect(), r = el.getBoundingClientRect();
+      const sx = r.left - pr.left, sy = r.top - pr.top, sw = r.width, sc = sx + sw / 2;
+      const rr = rng(bl.seed);
+      for (let n = 0; n < 3; n++) {
+        const delay = n === 0 ? 40 : 40 + rr() * 30, x0 = sc + (rr() - .5) * W * .8, pts = Array.from({ length: 8 }, () => rr() * 2 - 1);
+        const b = bs - delay; if (b < -40 || b >= 90) continue;
+        if (b < 0) continue;
+        fx.beginPath(); fx.moveTo(x0, 0);
+        for (let q = 1; q < 8; q++) { const f = q / 8; fx.lineTo(x0 + (sc - x0) * f + pts[q] * W * .06 * (1 - f), sy * f); }
+        fx.lineTo(sc, sy); fx.strokeStyle = PINK; fx.lineWidth = b < 45 ? 5 : 3; fx.lineJoin = "miter"; fx.stroke();
+      }
+      if (bs >= 40 && bs < 110) { iconPath(fx, sx, sy, sw); fx.fillStyle = PINK; fx.fill(); }
+      return bs < 200;
+    });
+
+    // command hit over everything
+    const h = vt - hitAt;
+    if (h < 70) { fx.globalAlpha = reduced ? .35 : 1; fx.fillStyle = PINK; fx.fillRect(0, 0, W, H); fx.globalAlpha = 1; }
+    else if (h >= 110 && h < 170) {
+      const r = rng(hitSeed * 13); const y = H * (.3 + .4 * r()), bw = H * (.08 + .1 * r()), ang = (r() - .5) * 1.2;
+      fx.save(); fx.translate(W / 2, y); fx.rotate(ang); fx.globalAlpha = reduced ? .35 : 1; fx.fillStyle = PINK;
+      fx.beginPath(); fx.moveTo(-W, -bw / 2); fx.lineTo(W, -bw / 2 + bw * .25); fx.lineTo(W, bw / 2 - bw * .35); fx.lineTo(-W, bw / 2); fx.fill(); fx.restore();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- auto demo: drag "Maps" onto her, then pin it ----------
+  function demo() {
+    hardReset();
+    const id = sugg[0], el = suggEl.children[0].firstChild;
+    const pr = phone.getBoundingClientRect(), r = el.getBoundingClientRect();
+    const x0 = r.left - pr.left + r.width / 2, y0 = r.top - pr.top + r.height / 2, { u, top, cx } = geo();
+    const x1 = cx + u * .05, y1 = top + u * .4, start = vt, len = 700;
+    startDrag(id, "sugg", 0, el);
+    const step = () => {
+      const p = Math.min(1, (vt - start) / len), e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      moveDrag(x0 + (x1 - x0) * e, y0 + (y1 - y0) * e - Math.sin(p * Math.PI) * H * .06);
+      if (p < 1) later(16, step); else later(250, () => { endDrag(x1, y1); later(1300, () => menu && menu.querySelector("button").click()); });
+    };
+    later(300, step);
+  }
+  function hardReset() {
+    queue = []; closeMenu(); if (drag) { drag.g.remove(); drag = null; }
+    held = null; heldOut = null; bolts = []; pose = 0; poseAt = -1e9; hitAt = -1e9; gaze = 0;
+    resetApps(); renderTiles(); say("Drag an app onto me. Go on."); sysEl.textContent = "";
+  }
+
+  // ---------- controls + readout ----------
+  const setStyle = s => {
+    menuStyle = s;
+    document.getElementById("v-side").setAttribute("aria-pressed", String(s === "side"));
+    document.getElementById("v-panel").setAttribute("aria-pressed", String(s === "panel"));
+    if (menu && held) { const h = held; closeMenu(); openMenu(h.id, h.where); }
+    readout();
+  };
+  function readout() {
+    document.getElementById("r-list").innerHTML = [
+      "Drag starts after moving 6 px; she watches the app (face panel turns toward it)",
+      "Over her: \"Gimme.\" Drop anywhere else: it snaps back",
+      "Drop on her, 0 ms: command hit, full crimson 70 ms, gap 40 ms, crimson slash 60 ms",
+      "0–250 ms: she pose-changes (strips 150 ms + green/crimson bars) to hand up, holding the app",
+      "0–150 ms: the app glitches into her hand (5 sliced bands, crimson copy)",
+      "170 ms: menu snaps in (" + (menuStyle === "panel" ? "bottom panel over the chatbox + dock, 2×2" : "column beside her raised hand") + "), one 83 ms crimson pop",
+      "Pin: 3 bolts strike the free dock slot, slot flashes crimson 70 ms, app pops in",
+      "Unpin / Hide: app glitches out of her hand with bars (250 ms)",
+      "App info / Uninstall: hands off to Android's own screens",
+      "Tap outside: cancel, app goes back where it was",
+    ].map(s => `<li>${s}</li>`).join("");
+  }
+  document.getElementById("v-side").addEventListener("click", () => setStyle("side"));
+  document.getElementById("v-panel").addEventListener("click", () => setStyle("panel"));
+  document.getElementById("demo").addEventListener("click", demo);
+  document.getElementById("reset").addEventListener("click", hardReset);
+  const slowBtn = document.getElementById("slow");
+  slowBtn.addEventListener("click", () => { speed = speed === 1 ? .25 : 1; slowBtn.setAttribute("aria-pressed", String(speed !== 1)); });
+  new ResizeObserver(resize).observe(phone);
+
+  resize(); renderTiles(); readout();
+  requestAnimationFrame(t => { last = t; frame(t); });
+})();
+</script>

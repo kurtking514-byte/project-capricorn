@@ -3,6 +3,8 @@
 
     <!-- Lets Capri set alarms and timers in the system clock app. -->
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+    <!-- 3.3: "Uninstall" from Capri's grab menu opens Android's own uninstall dialog -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
     <!-- Needed on Android 11+ to see the list of installed apps for the drawer. -->
     <queries>

@@ -14,6 +14,13 @@ class Prefs(context: Context) {
         sp.edit().putString(KEY_DOCK, keys.joinToString("|")).apply()
     }
 
+    /** 3.3: apps hidden by dragging them onto Capri ("unhide" in chat brings them all back). */
+    fun hidden(): Set<String> = sp.getStringSet(KEY_HIDDEN, emptySet()).orEmpty().toSet()
+
+    fun setHidden(keys: Set<String>) {
+        sp.edit().putStringSet(KEY_HIDDEN, keys).apply()
+    }
+
     fun launchCounts(): Map<String, Int> =
         sp.all.mapNotNull { (k, v) ->
             if (k.startsWith(COUNT_PREFIX) && v is Int) k.removePrefix(COUNT_PREFIX) to v else null
@@ -27,6 +34,7 @@ class Prefs(context: Context) {
     companion object {
         const val MAX_DOCK = 5
         private const val KEY_DOCK = "dock"
+        private const val KEY_HIDDEN = "hidden"
         private const val COUNT_PREFIX = "count:"
     }
 }

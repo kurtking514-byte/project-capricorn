@@ -1,8 +1,6 @@
 package io.github.kurtking514_byte.capricorn.ui
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -22,16 +20,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.kurtking514_byte.capricorn.data.AppEntry
 import io.github.kurtking514_byte.capricorn.ui.theme.CapriColors
 
-/** App icon (+ optional label). Tap launches, long-press opens a small menu. */
-@OptIn(ExperimentalFoundationApi::class)
+/**
+ * App icon (+ optional label). Tap launches, long-press opens a small menu.
+ * With [draggable], press-hold-and-move drags it (3.3: drop it on Capri and she grabs it).
+ */
 @Composable
 fun AppItem(
     app: AppEntry,
@@ -41,22 +39,16 @@ fun AppItem(
     onToggleDock: (AppEntry) -> Unit,
     onAppInfo: (AppEntry) -> Unit,
     modifier: Modifier = Modifier,
+    draggable: Boolean = false,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    val haptics = LocalHapticFeedback.current
 
     Box(modifier) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .clip(RoundedCornerShape(12.dp))
-                .combinedClickable(
-                    onClick = { onLaunch(app) },
-                    onLongClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        menuOpen = true
-                    },
-                )
+                .appGesture(app, draggable, onTap = { onLaunch(app) }, onMenu = { menuOpen = true })
                 .padding(6.dp),
         ) {
             Image(bitmap = app.icon, contentDescription = app.label, modifier = Modifier.size(48.dp))
