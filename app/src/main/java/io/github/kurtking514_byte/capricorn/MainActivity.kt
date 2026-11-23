@@ -71,6 +71,7 @@ class MainActivity : ComponentActivity() {
     private var lineId by mutableIntStateOf(0)
 
     private var mood by mutableStateOf("neutral")
+    private var letterPick by mutableStateOf<Pair<Char, List<AppEntry>>?>(null)   // 3.5
     private var skin: CapriSkin? = null
 
     private fun say(line: String) {
@@ -195,6 +196,13 @@ class MainActivity : ComponentActivity() {
                         onToggleDock = ::toggleDock,
                         onAppInfo = ::openAppInfo,
                         onGrabAction = ::grabAction,
+                        letterPick = letterPick,
+                        onLetter = ::onLetter,
+                        onPickLetterApp = {
+                            letterPick = null
+                            say(brain.letterPicked(it.label))
+                            launchSoon(it)
+                        },
                     )
                     AnimatedVisibility(
                         visible = drawerOpen,
@@ -318,6 +326,29 @@ class MainActivity : ComponentActivity() {
             }
             GrabAction.CANCEL -> say(brain.grabCancel())
         }
+    }
+
+    /**
+     * 3.5: you drew a letter (null = not a letter). She answers 120 ms after you let go, while the
+     * trail flashes: one app → red hit, opens 180 ms later; several → "Pick one" (most used first).
+     */
+    private fun onLetter(letter: Char?) {
+        letterPick = null
+        window.decorView.postDelayed({
+            if (letter == null) { say(brain.letterFail()); return@postDelayed }
+            val found = apps.filter { it.label.startsWith(letter, ignoreCase = true) }
+                .sortedByDescending { launchCounts[it.key] ?: 0 }
+            when (found.size) {
+                0 -> say(brain.letterNone(letter))
+                1 -> { say(brain.letterOpen(letter, found[0].label)); launchSoon(found[0]) }
+                else -> {
+                    say(brain.letterPick(letter, found.size))
+                    letterPick = letter to found.take(4)
+                    val shown = letterPick
+                    window.decorView.postDelayed({ if (letterPick === shown) letterPick = null }, 8_000)
+                }
+            }
+        }, 120)
     }
 
     /** Chat "unhide": every hidden app comes back. */

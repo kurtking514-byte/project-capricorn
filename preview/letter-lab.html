@@ -1,0 +1,470 @@
+<title>Capri Letter Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* Same look as the other labs: one phone, controls, a readout. Single dark look. */
+  :root {
+    color-scheme: dark;
+    --ink: #080E15;
+    --panel: #0C1A22;
+    --crimson: #FF3C68;
+    --cyan: #8EF5ED;
+    --acid: #F4ED75;
+    --text: #E6F4F4;
+    --dim: #7E949C;
+    --line: #1B2E38;
+    --display: "Exo 2", "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--ink); color: var(--text); font-family: var(--display);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 28px; box-sizing: border-box;
+  }
+  .wrap { max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font-weight: 800; font-size: 20px; letter-spacing: .02em; text-transform: uppercase; }
+  h1 span { color: var(--crimson); }
+  .step { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--acid); }
+  .phone {
+    position: relative; width: 100%; max-width: 100%; aspect-ratio: 9 / 19.5; background: var(--ink); border: 2px solid var(--line);
+    clip-path: polygon(0 14px, 14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px));
+    overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: none; cursor: crosshair;
+  }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #fx { pointer-events: none; z-index: 5; }
+  .clock { position: absolute; left: 0; right: 0; top: 3%; text-align: center; font: 800 44px/1 var(--display); font-style: italic; letter-spacing: .02em; z-index: 1; pointer-events: none; }
+  .clock small { display: block; margin-top: 6px; font: 600 10px/1 var(--mono); letter-spacing: .16em; color: var(--ink); background: var(--acid); width: max-content; margin-inline: auto; padding: 3px 6px; font-style: normal; }
+  .bubble {
+    position: absolute; left: 50%; top: 15%; transform: translateX(-50%); width: 82%; z-index: 2; pointer-events: none;
+    background: var(--panel); border: 1px solid var(--cyan); padding: 8px 12px; box-sizing: border-box;
+    font: 600 14px/1.35 var(--display); text-align: center;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+  .bubble b { display: block; font: 600 10px/1 var(--mono); letter-spacing: .14em; color: var(--crimson); margin-bottom: 4px; }
+  .sys { position: absolute; right: 10px; top: 1.2%; z-index: 3; font: 600 10px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--acid); pointer-events: none; }
+
+  .app {
+    width: 100%; aspect-ratio: 1; display: grid; place-items: center; padding: 0;
+    background: var(--panel); border: 1.5px solid var(--c, var(--cyan)); color: var(--c, var(--cyan));
+    font: 800 18px/1 var(--display); cursor: pointer;
+    clip-path: polygon(0 20%, 20% 0, 100% 0, 100% 80%, 80% 100%, 0 100%);
+  }
+  .slot { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+  .slot span { font: 400 10px/1 var(--mono); color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .pick { position: absolute; left: 6%; right: 6%; top: 68%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; z-index: 3; }
+  .pick-label { position: absolute; left: 6%; top: 65.3%; font: 600 9px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--acid); z-index: 3; }
+  .pop { animation: pop 83ms steps(1) 1; }
+  @keyframes pop { 0% { box-shadow: 6px 0 0 var(--crimson); transform: translateX(-3px); } }
+  .chat {
+    position: absolute; left: 5%; right: 5%; top: 80.5%; height: 5.2%; z-index: 1; display: flex; align-items: center; padding: 0 12px;
+    border: 1px solid var(--cyan); background: var(--panel); color: var(--dim); font-size: 13px; pointer-events: none;
+    clip-path: polygon(0 10px, 10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+  }
+  .dock { position: absolute; left: 8%; right: 8%; top: 88.5%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; z-index: 1; }
+  .opened {
+    position: absolute; inset: 0; z-index: 6; background: var(--panel); display: grid; place-items: center; align-content: center; gap: 10px;
+    font: 600 11px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--dim);
+  }
+  .opened strong { font: 800 28px/1 var(--display); letter-spacing: .04em; color: var(--c, var(--cyan)); }
+
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row-label { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); width: 100%; }
+  button {
+    font: 600 13px/1 var(--display); letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text); background: var(--panel); border: 1px solid var(--line); padding: 11px 14px; cursor: pointer;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  button.primary { background: var(--crimson); color: var(--ink); border-color: var(--crimson); }
+  button[aria-pressed="true"] { border-color: var(--cyan); color: var(--cyan); }
+  button:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
+  .readout { background: var(--panel); border: 1px solid var(--line); padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .readout h2 { margin: 0; font: 600 12px/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--acid); }
+  .readout .match { font: 600 12px/1.4 var(--mono); color: var(--cyan); min-height: 1.4em; }
+  ul { margin: 0; padding-left: 18px; font-family: var(--mono); font-size: 12px; line-height: 1.55; font-variant-numeric: tabular-nums; }
+  li::marker { color: var(--dim); }
+  .note { font-size: 13px; color: var(--dim); line-height: 1.5; margin: 0; }
+  .note b { color: var(--text); font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Capri <span>letters</span></h1>
+    <div class="step">Step 3.5 · draw a letter</div>
+  </header>
+
+  <div class="phone" id="phone">
+    <canvas id="c"></canvas>
+    <div class="clock">21:47<small>SUN 23 NOV</small></div>
+    <div class="bubble"><b>CAPRI</b><span id="line">Draw a letter anywhere. I'll find the app.</span></div>
+    <div class="sys" id="sys"></div>
+    <div class="pick-label" id="pick-label" hidden></div>
+    <div class="pick" id="pick" hidden></div>
+    <div class="chat">what do you want to do?</div>
+    <div class="dock" id="dock"></div>
+    <canvas id="fx"></canvas>
+  </div>
+
+  <div class="row" role="group" aria-label="Trail style">
+    <span class="row-label">Trail style</span>
+    <button id="v-bolt" aria-pressed="true">Lightning while drawing</button>
+    <button id="v-strike" aria-pressed="false">Clean line, strike on release</button>
+  </div>
+  <div class="row">
+    <button class="primary" id="demo">Auto demo</button>
+    <button id="slow" aria-pressed="false">Slow ×4</button>
+  </div>
+
+  <div class="readout">
+    <h2>What she read</h2>
+    <div class="match" id="match">Draw on the phone with your mouse or finger.</div>
+    <ul id="r-list"></ul>
+  </div>
+
+  <p class="note">Draw <b>one stroke</b> anywhere except on her (she has her own taps and swipes). Try <b>C</b> (Calendar, Camera, Clock… she asks which), <b>M</b>, <b>N</b>, <b>S</b>, <b>W</b> or <b>L</b>. A straight swipe <b>up</b> still opens the app list, so draw <b>I</b> top to bottom. The figure is a plain stand-in; the app uses your skin.</p>
+</div>
+
+<script>
+(() => {
+  const GREEN = "#00B144", CRIMSON = "#BC002B", BLACK = "#0E0A16", IRIS = "#0040A0", PUPIL = "#B3B3B3";
+  const PINK = "#FF3C68";
+  const STEP = 1000 / 12;                                  // 83 ms: the show's drawing rate
+
+  const phone = document.getElementById("phone");
+  const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+  const fxc = document.getElementById("fx"), fx = fxc.getContext("2d");
+  const lineEl = document.getElementById("line"), sysEl = document.getElementById("sys"), matchEl = document.getElementById("match");
+  const pickEl = document.getElementById("pick"), pickLabel = document.getElementById("pick-label");
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // A phone's worth of apps (generic names), most used first
+  const APPS = [
+    ["Messages", "#8EF5ED"], ["Camera", "#F4ED75"], ["Music", "#4FC3FF"], ["Maps", "#39FF88"], ["Calendar", "#FF9F5A"],
+    ["Clock", "#E6F4F4"], ["Notes", "#F4ED75"], ["Weather", "#4FC3FF"], ["Settings", "#7E949C"], ["Phone", "#39FF88"],
+    ["Gallery", "#C9A2FF"], ["Files", "#C9A2FF"], ["Calculator", "#FF9F5A"], ["Contacts", "#8EF5ED"], ["Store", "#39FF88"],
+    ["News", "#E6F4F4"], ["Wallet", "#F4ED75"], ["Browser", "#4FC3FF"], ["Recorder", "#FF3C68"], ["Health", "#FF3C68"],
+  ].map(([name, c]) => ({ name, c }));
+  const DOCK = ["Phone", "Messages", "Camera", "Browser"];
+
+  // ---------- virtual clock ----------
+  let vt = 0, last = performance.now(), speed = 1, queue = [];
+  const later = (ms, fn) => queue.push({ at: vt + ms, fn });
+  const rng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const pick = (...a) => a[Math.floor(Math.random() * a.length)];
+
+  let W = 0, H = 0, D = 1;
+  const geo = () => ({ u: H * .33, top: H * .40, cx: W / 2 });
+  function resize() {
+    const r = phone.getBoundingClientRect(); D = Math.min(devicePixelRatio || 1, 2);
+    W = r.width; H = r.height;
+    for (const c of [cv, fxc]) { c.width = Math.round(W * D); c.height = Math.round(H * D); }
+    ctx.setTransform(D, 0, 0, D, 0, 0); fx.setTransform(D, 0, 0, D, 0, 0);
+  }
+
+  // ---------- stand-in figure (same original shapes as the other labs) ----------
+  function drawFigure(g) {
+    const { u, top, cx } = geo();
+    const hx = cx, hy = top + u * .05;
+    for (let i = 0; i < 13; i++) {
+      let a = -Math.PI * (.08 + .84 * i / 12), len = u * (.26 + .2 * Math.abs(Math.sin(i * 1.7))), w = u * .07;
+      if (i === 0 || i === 12) { a += i === 0 ? .55 : -.55; len *= 1.25; }
+      const nx = -Math.sin(a), ny = Math.cos(a);
+      g.beginPath(); g.moveTo(hx + nx * w / 2, hy + ny * w / 2);
+      g.lineTo(hx + Math.cos(a) * len, hy + Math.sin(a) * len);
+      g.lineTo(hx + Math.cos(a) * len * .55 - nx * w * .9, hy + Math.sin(a) * len * .55 - ny * w * .9);
+      g.lineTo(hx - nx * w / 2, hy - ny * w / 2); g.closePath();
+      g.fillStyle = i % 4 === 2 ? BLACK : CRIMSON; g.fill();
+    }
+    g.beginPath();
+    g.moveTo(cx - u * .012, top + u * .12); g.lineTo(cx + u * .012, top + u * .12);
+    g.lineTo(cx + u * .085, top + u * .17); g.lineTo(cx + u * .05, top + u * .42); g.lineTo(cx + u * .07, top + u * .5);
+    g.lineTo(cx + u * .045, top + u * .98); g.lineTo(cx + u * .014, top + u * .98); g.lineTo(cx, top + u * .56);
+    g.lineTo(cx - u * .014, top + u * .98); g.lineTo(cx - u * .045, top + u * .98);
+    g.lineTo(cx - u * .07, top + u * .5); g.lineTo(cx - u * .05, top + u * .42); g.lineTo(cx - u * .085, top + u * .17);
+    g.closePath(); g.fillStyle = BLACK; g.fill();
+    g.fillStyle = CRIMSON;
+    g.beginPath(); g.moveTo(cx - u * .075, top + u * .21); g.lineTo(cx + u * .075, top + u * .21); g.lineTo(cx + u * .06, top + u * .26); g.lineTo(cx - u * .06, top + u * .26); g.fill();
+    g.beginPath(); g.moveTo(cx - u * .066, top + u * .47); g.lineTo(cx + u * .066, top + u * .47); g.lineTo(cx, top + u * .56); g.fill();
+    g.strokeStyle = BLACK; g.lineWidth = u * .024;
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx + s * u * .08, top + u * .18); g.lineTo(cx + s * u * .105, top + u * .56); g.stroke(); }
+    g.beginPath(); g.ellipse(cx, top + u * .065, u * .05, u * .06, 0, 0, Math.PI * 2); g.fillStyle = BLACK; g.fill();
+    g.beginPath(); g.moveTo(cx - u * .065, top + u * .035); g.lineTo(cx + u * .065, top + u * .035);
+    g.lineTo(cx + u * .05, top + u * .08); g.lineTo(cx - u * .05, top + u * .08); g.closePath(); g.fillStyle = GREEN; g.fill();
+    for (const s of [-1, 1]) {
+      const ex = cx + s * u * .028, ey = top + u * .057;
+      g.beginPath(); g.ellipse(ex, ey, u * .02, u * .011, 0, 0, Math.PI * 2); g.fillStyle = "#00030D"; g.fill();
+      g.beginPath(); g.arc(ex, ey, u * .0075, 0, Math.PI * 2); g.fillStyle = IRIS; g.fill();
+      g.beginPath(); g.arc(ex, ey, u * .0037, 0, Math.PI * 2); g.fillStyle = PUPIL; g.fill();
+    }
+  }
+  const overHer = (x, y) => { const { u, top, cx } = geo(); return x > cx - u * .22 && x < cx + u * .22 && y > top - u * .2 && y < top + u; };
+
+  // ---------- letter recognizer: one stroke vs. letter templates (uniform scale, no rotation) ----------
+  // Templates are drawn in a 100×100 box, y down, in the usual writing direction. Several per letter.
+  const T = {
+    A: [[[0,100],[50,0],[100,100]], [[0,100],[50,0],[100,100],[75,55],[25,55]]],
+    B: [[[0,100],[0,0],[60,5],[78,25],[60,46],[10,50],[70,55],[88,78],[66,98],[0,100]]],
+    C: [[[90,12],[55,0],[18,12],[0,50],[18,88],[55,100],[90,88]]],
+    D: [[[0,100],[0,0],[55,8],[92,50],[55,92],[0,100]]],
+    E: [[[90,10],[35,0],[10,22],[45,48],[10,75],[35,100],[90,90]], [[90,0],[0,0],[0,50],[65,50],[0,50],[0,100],[90,100]]],
+    F: [[[90,0],[0,0],[0,100]], [[90,0],[0,0],[0,50],[60,50],[0,50],[0,100]]],
+    G: [[[90,12],[50,0],[8,25],[5,72],[45,100],[88,85],[90,55],[55,55]]],
+    H: [[[0,0],[0,100],[0,55],[100,50],[100,100]], [[0,0],[0,100],[0,60],[50,42],[100,60],[100,100]]],
+    I: [[[50,0],[50,100]]],
+    J: [[[80,0],[80,78],[60,100],[22,100],[0,80]]],
+    K: [[[85,0],[0,50],[85,100]], [[0,0],[0,100],[0,60],[80,0],[30,55],[85,100]]],
+    L: [[[0,0],[0,100],[90,100]]],
+    M: [[[0,100],[0,0],[50,60],[100,0],[100,100]]],
+    N: [[[0,100],[0,0],[100,100],[100,0]]],
+    O: [[[50,0],[15,15],[0,50],[15,85],[50,100],[85,85],[100,50],[85,15],[50,0]], [[50,0],[85,15],[100,50],[85,85],[50,100],[15,85],[0,50],[15,15],[50,0]]],
+    P: [[[0,100],[0,0],[60,5],[82,25],[60,48],[0,50]]],
+    Q: [[[50,0],[15,15],[0,50],[15,85],[50,100],[85,85],[100,50],[85,15],[50,0],[60,60],[100,100]]],
+    R: [[[0,100],[0,0],[60,5],[82,25],[60,48],[0,50],[90,100]]],
+    S: [[[90,10],[50,0],[10,15],[18,40],[82,60],[90,85],[50,100],[8,90]]],
+    T: [[[0,0],[50,0],[100,0],[50,0],[50,100]]],
+    U: [[[0,0],[0,70],[20,100],[80,100],[100,70],[100,0]]],
+    V: [[[0,0],[50,100],[100,0]]],
+    W: [[[0,0],[25,100],[50,40],[75,100],[100,0]]],
+    X: [[[0,0],[100,100],[100,0],[0,100]]],
+    Y: [[[0,0],[50,50],[100,0],[50,50],[50,100]], [[0,0],[40,55],[100,0],[60,60],[40,100]]],
+    Z: [[[0,0],[100,0],[0,100],[100,100]]],
+  };
+  const N = 48;
+  const len = p => { let d = 0; for (let i = 1; i < p.length; i++) d += Math.hypot(p[i][0] - p[i-1][0], p[i][1] - p[i-1][1]); return d; };
+  function resample(pts) {
+    const I = len(pts) / (N - 1); let D = 0; const out = [pts[0].slice()]; const p = pts.map(q => q.slice());
+    for (let i = 1; i < p.length; i++) {
+      const d = Math.hypot(p[i][0] - p[i-1][0], p[i][1] - p[i-1][1]);
+      if (D + d >= I && d > 0) {
+        const t = (I - D) / d, q = [p[i-1][0] + t * (p[i][0] - p[i-1][0]), p[i-1][1] + t * (p[i][1] - p[i-1][1])];
+        out.push(q); p.splice(i, 0, q); D = 0;
+      } else D += d;
+    }
+    while (out.length < N) out.push(p[p.length - 1].slice());
+    return out.slice(0, N);
+  }
+  function normalize(pts) {
+    const r = resample(pts);
+    const xs = r.map(p => p[0]), ys = r.map(p => p[1]);
+    const s = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) || 1;
+    const cx = xs.reduce((a, b) => a + b) / N, cy = ys.reduce((a, b) => a + b) / N;
+    return r.map(([x, y]) => [(x - cx) * 100 / s, (y - cy) * 100 / s]);
+  }
+  const TEMPLATES = Object.entries(T).flatMap(([L, list]) => list.map(t => ({ L, p: normalize(t) })));
+  const dist = (a, b) => a.reduce((s, p, i) => s + Math.hypot(p[0] - b[i][0], p[1] - b[i][1]), 0) / N;
+  // Average distance (in a 100-wide box) still counted as a letter. Tested on messy synthetic strokes:
+  // 13 reads ~95% of letters right and rejects ~81% of random scribbles.
+  const MATCH_MAX = 13;
+  function recognize(stroke) {
+    const c = normalize(stroke), rc = c.slice().reverse();
+    let best = null;
+    for (const t of TEMPLATES) {
+      const d = Math.min(dist(c, t.p), dist(rc, t.p) + 2);      // drawn backwards: allowed, slightly worse
+      if (!best || d < best.d) best = { L: t.L, d };
+    }
+    return best;
+  }
+
+  // ---------- drawing state ----------
+  let style = "bolt";
+  let stroke = null;           // points while drawing
+  let done = null;             // { pts, at, ok } after release
+  let strikeAt = -1e9, hitAt = -1e9, hitSeed = 1;
+
+  const say = s => { lineEl.textContent = s; };
+  const sys = (s, ms = 1500) => { sysEl.textContent = s; later(ms, () => { if (sysEl.textContent === s) sysEl.textContent = ""; }); };
+
+  function jagged(g, pts, seed, amp, width, color) {
+    if (pts.length < 2) return;
+    const r = rng(seed);
+    g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) {
+      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], l = Math.hypot(x1 - x0, y1 - y0) || 1;
+      const nx = -(y1 - y0) / l, ny = (x1 - x0) / l, o = (r() - .5) * 2 * amp;
+      g.lineTo((x0 + x1) / 2 + nx * o, (y0 + y1) / 2 + ny * o); g.lineTo(x1, y1);
+    }
+    g.strokeStyle = color; g.lineWidth = width; g.lineJoin = "miter"; g.lineCap = "butt"; g.stroke();
+  }
+  function smooth(g, pts, width, color) {
+    if (pts.length < 2) return;
+    g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (const p of pts) g.lineTo(p[0], p[1]);
+    g.strokeStyle = color; g.lineWidth = width; g.lineJoin = "round"; g.lineCap = "round"; g.stroke();
+  }
+  // thin out a stroke for the jagged look (every ~10 px)
+  const sparse = pts => pts.filter((p, i) => i === 0 || i === pts.length - 1 || i % 3 === 0);
+
+  function bars(step, I, seed, box) {
+    if (I <= 0) return;
+    const r = rng(step * 7919 + seed * 104729);
+    const n = r() < .22 ? 1 : Math.round(3 + 9 * I * r());
+    for (let i = 0; i < n; i++) {
+      const y = box.y + r() * box.h, h = H * (.003 + .018 * r() * r()), dir = r() < .5 ? -1 : 1;
+      const x0 = box.x + r() * box.w, l = W * (.05 + .25 * r());
+      fx.fillStyle = r() < .55 ? GREEN : CRIMSON; fx.fillRect(dir > 0 ? x0 : x0 - l, y, l, h);
+    }
+  }
+  const bbox = pts => { const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const x = Math.min(...xs), y = Math.min(...ys); return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y }; };
+
+  // ---------- pointer ----------
+  phone.addEventListener("pointerdown", e => {
+    if (e.target.closest("button") || done && vt - done.at < 300) return;
+    const r = phone.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    if (overHer(x, y) || y > H * .78) return;                 // her own gestures / chatbox + dock
+    hidePick();
+    phone.setPointerCapture(e.pointerId);
+    stroke = [[x, y]];
+  });
+  phone.addEventListener("pointermove", e => {
+    if (!stroke) return;
+    const r = phone.getBoundingClientRect(), p = [e.clientX - r.left, e.clientY - r.top], q = stroke[stroke.length - 1];
+    if (Math.hypot(p[0] - q[0], p[1] - q[1]) > 3) stroke.push(p);
+  });
+  const end = () => { if (!stroke) return; const s = stroke; stroke = null; finish(s); };
+  phone.addEventListener("pointerup", end); phone.addEventListener("pointercancel", end);
+
+  function finish(pts) {
+    const b = bbox(pts);
+    if (Math.max(b.w, b.h) < 28 || pts.length < 4) return;                 // a tap, not a letter
+    const dx = pts[pts.length - 1][0] - pts[0][0], dy = pts[pts.length - 1][1] - pts[0][1];
+    if (dy < -H * .12 && Math.abs(dx) < Math.abs(dy) * .3 && len(pts) < Math.abs(dy) * 1.15) {
+      sys("→ app list (swipe up)"); matchEl.textContent = "straight swipe up: the app list, not a letter"; return;
+    }
+    const m = recognize(pts);
+    const ok = m && m.d <= MATCH_MAX;
+    done = { pts, at: vt, ok, seed: Math.floor(Math.random() * 1e6) };
+    strikeAt = vt;
+    matchEl.textContent = m ? `${ok ? "read" : "closest"}: ${m.L} · distance ${m.d.toFixed(1)} (max ${MATCH_MAX})` : "";
+    if (!ok) { later(120, () => say(pick("Was that a letter? Try again.", "Abstract art. Love it. Now draw a letter.", "I can't read that. Neat strokes, champ."))); return; }
+    const L = m.L, found = APPS.filter(a => a.name.toUpperCase().startsWith(L));
+    if (!found.length) { later(120, () => say(`${L}? Nothing on your phone starts with ${L}.`)); return; }
+    if (found.length === 1) { later(120, () => { say(`${L}. ${found[0].name}. Done.`); open(found[0]); }); return; }
+    later(120, () => { say(pick(`${L}? You've got ${found.length}. Pick one.`, `${L}… which one, boss?`)); showPick(L, found.slice(0, 4)); });
+  }
+  function open(app) {
+    hitAt = vt; hitSeed++;                                     // C3 command hit, app opens 180 ms later
+    later(180, () => {
+      const o = document.createElement("div"); o.className = "opened"; o.style.setProperty("--c", app.c);
+      o.innerHTML = `opening<strong>${app.name}</strong>(stand-in for the real app)`;
+      phone.append(o); later(1100, () => { o.remove(); say(pick("Back already? Draw me another.", "That was quick. Again?")); });
+    });
+  }
+  function showPick(L, apps) {
+    pickLabel.textContent = `Starts with ${L}`; pickLabel.hidden = false;
+    pickEl.replaceChildren(...apps.map(a => {
+      const w = document.createElement("div"); w.className = "slot";
+      const b = document.createElement("button"); b.className = "app pop"; b.textContent = a.name[0]; b.style.setProperty("--c", a.c);
+      b.addEventListener("click", () => { hidePick(); say(`${a.name}. Good choice.`); open(a); });
+      const l = document.createElement("span"); l.textContent = a.name; w.append(b, l); return w;
+    }));
+    pickEl.hidden = false; setTimeout(() => pickEl.querySelectorAll(".pop").forEach(b => b.classList.remove("pop")), STEP / speed);
+  }
+  function hidePick() { pickEl.hidden = true; pickLabel.hidden = true; }
+
+  // ---------- frame ----------
+  function frame(now) {
+    vt += Math.min(50, now - last) * speed; last = now;
+    const due = queue.filter(q => q.at <= vt); queue = queue.filter(q => q.at > vt); due.forEach(q => q.fn());
+    ctx.clearRect(0, 0, W, H); fx.clearRect(0, 0, W, H);
+    drawFigure(ctx);
+    const step = Math.floor(vt / STEP);
+
+    // while drawing
+    if (stroke) {
+      if (style === "bolt") jagged(fx, sparse(stroke), step * 31 + 7, 7, 3.5, PINK);   // re-rolls every 83 ms
+      else smooth(fx, stroke, 3, PINK);
+    }
+
+    // after release
+    if (done) {
+      const k = vt - done.at, pts = sparse(done.pts), b = bbox(done.pts);
+      const box = { x: b.x - 10, y: b.y - 10, w: b.w + 20, h: b.h + 20 };
+      if (style === "strike" && k < 70) {                                    // 3 bolts from the top onto where you started
+        const r = rng(done.seed), [sx, sy] = done.pts[0];
+        for (let n = 0; n < 3; n++) {
+          const x0 = sx + (r() - .5) * W * .8;
+          const path = Array.from({ length: 9 }, (_, q) => { const f = q / 8; return [x0 + (sx - x0) * f + (r() - .5) * W * .1 * (1 - f), sy * f]; });
+          jagged(fx, path, done.seed + n, 4, k < 45 ? 5 : 3, PINK);
+        }
+      }
+      const flashEnd = style === "strike" ? 140 : 70;
+      if (k < flashEnd) jagged(fx, pts, done.seed + Math.floor(k / STEP), done.ok ? 9 : 5, done.ok ? 7 : 4, PINK);
+      else if (k < flashEnd + 250) {                                         // breaks up into the show's bars
+        const s = Math.floor((k - flashEnd) / STEP);
+        if (s === 0) jagged(fx, pts.filter((_, i) => rng(done.seed + i)() > .45), done.seed + 3, 9, 4, PINK);
+        bars(s, [.9, .55, .25][s] || 0, done.seed, box);
+      } else done = null;
+    }
+
+    // C3 command hit over everything
+    const h = vt - hitAt;
+    if (h < 70) { fx.globalAlpha = reduced ? .35 : 1; fx.fillStyle = PINK; fx.fillRect(0, 0, W, H); fx.globalAlpha = 1; }
+    else if (h >= 110 && h < 170) {
+      const r = rng(hitSeed * 13), y = H * (.3 + .4 * r()), bw = H * (.08 + .1 * r()), ang = (r() - .5) * 1.2;
+      fx.save(); fx.translate(W / 2, y); fx.rotate(ang); fx.globalAlpha = reduced ? .35 : 1; fx.fillStyle = PINK;
+      fx.beginPath(); fx.moveTo(-W, -bw / 2); fx.lineTo(W, -bw / 2 + bw * .25); fx.lineTo(W, bw / 2 - bw * .35); fx.lineTo(-W, bw / 2); fx.fill(); fx.restore();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- auto demo: draws an "M" next to her ----------
+  function demo() {
+    hidePick(); queue = queue.filter(() => false); done = null;
+    const pathM = [[0,100],[0,0],[50,60],[100,0],[100,100]];
+    const x0 = W * .08, y0 = H * .26, s = W * .26;
+    const pts = [];
+    for (let i = 1; i < pathM.length; i++) for (let t = 0; t < 1; t += .08) {
+      const a = pathM[i - 1], b = pathM[i]; pts.push([x0 + (a[0] + (b[0] - a[0]) * t) * s / 100 + (Math.random() - .5) * 3, y0 + (a[1] + (b[1] - a[1]) * t) * s / 100 + (Math.random() - .5) * 3]);
+    }
+    pts.push([x0 + s, y0 + s]);
+    stroke = [pts[0]]; let i = 1;
+    const tick = () => { if (!stroke) return; stroke.push(pts[i++]); if (i < pts.length) later(14, tick); else later(150, end); };
+    later(14, tick);
+  }
+
+  // ---------- controls ----------
+  const setStyle = s => {
+    style = s;
+    document.getElementById("v-bolt").setAttribute("aria-pressed", String(s === "bolt"));
+    document.getElementById("v-strike").setAttribute("aria-pressed", String(s === "strike"));
+    readout();
+  };
+  function readout() {
+    document.getElementById("r-list").innerHTML = [
+      style === "bolt"
+        ? "While drawing: a jagged crimson bolt follows your finger, re-rolling every 83 ms (the show's drawing rate)"
+        : "While drawing: a clean crimson line. On release: 3 bolts strike from the top onto where you started, 70 ms",
+      "Release, 0–" + (style === "bolt" ? 70 : 140) + " ms: the letter flashes as a thick bolt",
+      "Then 250 ms: it breaks up into green + crimson bars and is gone",
+      "120 ms: she reads it. One app → red command hit, app opens 180 ms later",
+      "Several apps → \"Pick one\": up to 4 icons pop in above the chatbox (most used first)",
+      "Not a letter → the trail fizzles, she teases you; nothing opens",
+      "Starts anywhere except on her and the chatbox/dock; a straight swipe up is still the app list",
+    ].map(s => `<li>${s}</li>`).join("");
+  }
+  document.getElementById("v-bolt").addEventListener("click", () => setStyle("bolt"));
+  document.getElementById("v-strike").addEventListener("click", () => setStyle("strike"));
+  document.getElementById("demo").addEventListener("click", demo);
+  const slowBtn = document.getElementById("slow");
+  slowBtn.addEventListener("click", () => { speed = speed === 1 ? .25 : 1; slowBtn.setAttribute("aria-pressed", String(speed !== 1)); });
+
+  // dock
+  document.getElementById("dock").replaceChildren(...DOCK.map(n => {
+    const a = APPS.find(x => x.name === n), b = document.createElement("button");
+    b.className = "app"; b.textContent = n[0]; b.style.setProperty("--c", a.c); b.setAttribute("aria-label", n);
+    b.addEventListener("click", () => { say(`${n}. Fine.`); open(a); });
+    const w = document.createElement("div"); w.className = "slot"; w.append(b); return w;
+  }));
+
+  new ResizeObserver(resize).observe(phone);
+  resize(); readout();
+  // test hook for checking the recognizer
+  window.__capriRead = pts => recognize(pts);
+  requestAnimationFrame(t => { last = t; frame(t); });
+})();
+</script>

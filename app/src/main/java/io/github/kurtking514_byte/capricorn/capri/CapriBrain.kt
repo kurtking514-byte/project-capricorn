@@ -78,6 +78,17 @@ class CapriBrain(private val context: Context) {
     fun unhidden(n: Int): String = if (n == 0) pick("Nothing's hidden. You're an open book.").also { mood = "shrug" }
         else done(if (n == 1) "One app back from the shadows." else "$n apps back from the shadows.", "smirk")
 
+    // 3.5: you drew a letter on the home screen
+    fun letterOpen(letter: Char, label: String): String = done(pick("$letter. $label. Done.", "$letter for $label. Easy."), "smirk")
+    fun letterPick(letter: Char, n: Int): String = pick("$letter? You've got $n. Pick one.", "$letter… which one, boss?").also { mood = "skeptical" }
+    fun letterPicked(label: String): String = done(pick("$label. Good choice.", "$label it is."), "smirk")
+    fun letterNone(letter: Char): String = pick("$letter? Nothing on your phone starts with $letter.", "No $letter apps. Draw something else.").also { mood = "shrug" }
+    fun letterFail(): String = pick(
+        "Was that a letter? Try again.",
+        "Abstract art. Love it. Now draw a letter.",
+        "I can't read that. Neat strokes, champ.",
+    ).also { mood = "shrug" }
+
     /** 3.4: swiped back in after you swiped her away. */
     fun back(): String = pick(
         "Back. Try not to look so relieved.",

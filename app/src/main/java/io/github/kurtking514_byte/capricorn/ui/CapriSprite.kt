@@ -627,8 +627,8 @@ internal fun DrawScope.drawPoseGlitch(
 
 // The show's glitch colors (CAPRI_REFERENCE.md): panel green, hair crimson, and a dim crimson
 // for her silhouette at the start of the appear glitch.
-private val GLITCH_GREEN = Color(0xFF00B144)
-private val GLITCH_CRIMSON = Color(0xFFBC002B)
+internal val GLITCH_GREEN = Color(0xFF00B144)
+internal val GLITCH_CRIMSON = Color(0xFFBC002B)
 internal val GLITCH_DIM = Color(0xFF5A0018)
 /** The show changes drawings every 2 frames at 24 fps, so the bars re-roll every 83 ms. */
 internal const val GLITCH_STEP_MS = 83.33f

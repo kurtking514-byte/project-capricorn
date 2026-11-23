@@ -12,7 +12,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -104,6 +103,9 @@ fun HomeScreen(
     onToggleDock: (AppEntry) -> Unit,
     onAppInfo: (AppEntry) -> Unit,
     onGrabAction: (AppEntry, GrabAction) -> Unit,
+    letterPick: Pair<Char, List<AppEntry>>?,       // 3.5: several apps start with the drawn letter
+    onLetter: (Char?) -> Unit,
+    onPickLetterApp: (AppEntry) -> Unit,
 ) {
     val openDrawer by rememberUpdatedState(onOpenDrawer)
     val keyboard = LocalSoftwareKeyboardController.current
@@ -179,17 +181,8 @@ fun HomeScreen(
             .fillMaxSize()
             .background(CapriColors.Black)
             .trackGaze()                                 // she looks toward wherever you touch
-            .pointerInput(Unit) {
-                var dragged = 0f
-                detectVerticalDragGestures(
-                    onDragStart = { dragged = 0f },
-                    onDragEnd = { if (dragged < -100.dp.toPx()) openDrawer() },
-                    onDragCancel = { dragged = 0f },
-                ) { change, amount ->
-                    dragged += amount
-                    change.consume()
-                }
-            }
+            // straight swipe up = app list; any other one-finger stroke on the empty screen = a letter (3.5)
+            .homeStrokes(onDrawer = { openDrawer() }, onLetter = onLetter)
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -245,6 +238,30 @@ fun HomeScreen(
                         )
                     }
                 }
+            } else if (letterPick != null) {
+                // 3.5: "Pick one": up to 4 apps that start with the letter you drew, most used first
+                Text(
+                    "STARTS WITH ${letterPick.first}", color = CapriColors.Acid,
+                    style = MaterialTheme.typography.labelSmall, letterSpacing = 1.5.sp,
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp, start = 4.dp),
+                )
+                Row(
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    letterPick.second.forEach { app ->
+                        AppItem(
+                            app = app,
+                            inDock = app.key in dockKeys,
+                            showLabel = true,
+                            onLaunch = onPickLetterApp,
+                            onToggleDock = onToggleDock,
+                            onAppInfo = onAppInfo,
+                            modifier = Modifier.weight(1f),
+                            draggable = true,
+                        )
+                    }
+                }
             }
 
             OutlinedTextField(
@@ -292,6 +309,7 @@ fun HomeScreen(
 
         // 3.3: the app you drag, the app she holds + her options menu, the pin lightning
         GrabLayer(inDock = { it.key in dockKeys }, onAction = onGrabAction)
+        LetterTrail()                                   // 3.5: the lightning under your finger
 
         // Crimson flash whenever she does or says something (no touch handling, so it never blocks taps).
         Canvas(Modifier.fillMaxSize()) {
