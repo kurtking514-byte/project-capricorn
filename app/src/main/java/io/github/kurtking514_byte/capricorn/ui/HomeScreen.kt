@@ -107,6 +107,7 @@ fun HomeScreen(
     onLetter: (Char?) -> Unit,
     onPickLetterApp: (AppEntry) -> Unit,
     onDoubleTapEmpty: () -> Unit,                   // 3.6: lock
+    onTwoFingerDown: () -> Unit,                    // 3.7: flashlight
 ) {
     val openDrawer by rememberUpdatedState(onOpenDrawer)
     val keyboard = LocalSoftwareKeyboardController.current
@@ -183,7 +184,8 @@ fun HomeScreen(
             .background(CapriColors.Black)
             .trackGaze()                                 // she looks toward wherever you touch
             // straight swipe up = app list; any other one-finger stroke on the empty screen = a letter (3.5)
-            .homeStrokes(onDrawer = { openDrawer() }, onLetter = onLetter, onDoubleTap = onDoubleTapEmpty)
+            .homeStrokes(onDrawer = { openDrawer() }, onLetter = onLetter, onDoubleTap = onDoubleTapEmpty,
+                onTwoFingerDown = onTwoFingerDown)
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,

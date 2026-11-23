@@ -96,6 +96,13 @@ class CapriBrain(private val context: Context) {
         "Double-tap all you want. Say \"overlay\" first, then I can lock it.",
     ).also { mood = "annoyed" }
 
+    /** Flashlight on/off (chat "flashlight", or 3.7: two-finger swipe down on the home screen). */
+    fun torch(): String = when (QuickActions.toggleTorch(context)) {
+        true -> done(pick("Let there be light.", "Lights on. You're welcome."))
+        false -> done(pick("And... dark again.", "Torch off. Mysterious."), "smirk")
+        null -> "No flashlight on this thing. Tragic."
+    }
+
     /** 3.4: swiped back in after you swiped her away. */
     fun back(): String = pick(
         "Back. Try not to look so relieved.",
@@ -286,11 +293,7 @@ class CapriBrain(private val context: Context) {
             return done("Lights out.", "smirk")
         }
         if (Regex("\\b(flashlight|torch|flash)\\b").containsMatchIn(t)) {
-            return when (QuickActions.toggleTorch(context)) {
-                true -> done("Let there be light.")
-                false -> done("And... dark again.", "smirk")
-                null -> "No flashlight on this thing. Tragic."
-            }
+            return torch()
         }
 
         if (t in setOf("apps", "all apps", "app list", "drawer", "show apps", "list apps")) {

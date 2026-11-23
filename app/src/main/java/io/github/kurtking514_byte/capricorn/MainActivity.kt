@@ -200,6 +200,7 @@ class MainActivity : ComponentActivity() {
                         letterPick = letterPick,
                         onLetter = ::onLetter,
                         onDoubleTapEmpty = ::lockFromHome,
+                        onTwoFingerDown = { say(brain.torch()) },
                         onPickLetterApp = {
                             letterPick = null
                             say(brain.letterPicked(it.label))
