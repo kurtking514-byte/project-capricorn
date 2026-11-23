@@ -43,6 +43,7 @@ import io.github.kurtking514_byte.capricorn.ui.DRAWER_CLOSE_MS
 import io.github.kurtking514_byte.capricorn.ui.AppDrawer
 import io.github.kurtking514_byte.capricorn.ui.StatusScan
 import io.github.kurtking514_byte.capricorn.capri.PhoneStatus
+import io.github.kurtking514_byte.capricorn.capri.BatteryTracker
 import io.github.kurtking514_byte.capricorn.ui.AppGrab
 import io.github.kurtking514_byte.capricorn.ui.CapriAway
 import io.github.kurtking514_byte.capricorn.ui.GrabAction
@@ -137,6 +138,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        BatteryTracker.start(this)                 // 3.9b: learns the real drain for the battery estimate
         // Capri is always dark, so keep status/nav bar icons light even if the phone is in light mode.
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),

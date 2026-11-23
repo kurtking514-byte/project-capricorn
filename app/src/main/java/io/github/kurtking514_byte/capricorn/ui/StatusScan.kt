@@ -66,10 +66,10 @@ private val PURPLE = Color(0xFF37197B)
 private val OFF = Color(0xFF4A4458)
 private val SEG_OFF = Color(0xFF1C1824)
 
-private class Row(val label: String, val value: String, val bad: Boolean = false, val dim: Boolean = false, val bar: Boolean = false)
+private class Row(val label: String, val value: String, val bad: Boolean = false, val dim: Boolean = false, val bar: Boolean = false, val sub: String? = null)
 
 private fun rows(s: PhoneStatus): List<Row> = listOf(
-    Row("BATTERY", "${s.battery}%", bad = s.battery <= 15 && !s.charging, bar = true),
+    Row("BATTERY", "${s.battery}%", bad = s.battery <= 15 && !s.charging, bar = true, sub = s.batteryLeft),
     when {
         s.alarm == null -> Row("ALARM", "NONE", dim = true)
         s.alarmInMin != null && s.alarmInMin in 0..60 -> Row("ALARM", "IN ${s.alarmInMin} MIN", bad = true)
@@ -108,7 +108,8 @@ fun StatusScanPanel() {
         val strip = 34.dp.toPx()
         val lh = 52.dp.toPx()
         val py = topInset + size.height * 0.15f
-        val ph = strip + 12.dp.toPx() + list.size * lh
+        val extra = 16.dp.toPx()                           // the battery line is taller: its estimate sits under the bar
+        val ph = strip + 12.dp.toPx() + list.size * lh + extra
         val x0 = px + 16.dp.toPx()
 
         if (k >= endAt) {                                   // break into bars, 2 steps
@@ -142,7 +143,7 @@ fun StatusScanPanel() {
             val at = PANEL_AT + i * ROW_GAP
             if (k < at) return@forEachIndexed
             val ki = k - at
-            val top = py + strip + 10.dp.toPx() + i * lh
+            val top = py + strip + 10.dp.toPx() + i * lh + (if (i > 0) extra else 0f)
             val valueY = top + 14.dp.toPx()
             // bolt from the top of the screen onto the line
             if (ki < BOLT_MS) {
@@ -178,6 +179,11 @@ fun StatusScanPanel() {
                     drawRect(if (j < on) (if (row.bad) GLITCH_CRIMSON else GLITCH_GREEN) else SEG_OFF, Offset(bx + j * (sw + sg), segTop), Size(sw, sh))
                 }
                 if (s.charging) drawRect(GLITCH_GREEN, Offset(bx + 10 * (sw + sg) + 2.dp.toPx(), segTop + sh * 0.3f), Size(4.dp.toPx(), sh * 0.4f))
+                // 3.9b: time left / until full, small, under the bar ("LEARNING…" until there's enough data)
+                row.sub?.let { sub ->
+                    val c = when { row.bad -> GLITCH_CRIMSON; s.charging -> GLITCH_GREEN; else -> CapriColors.Dim }
+                    text(measurer, sub, bx, segTop + sh + 4.dp.toPx(), 11.sp, c, FontFamily.Monospace)
+                }
             }
         }
     }

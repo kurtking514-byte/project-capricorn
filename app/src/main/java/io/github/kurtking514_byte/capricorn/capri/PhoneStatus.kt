@@ -17,6 +17,8 @@ import io.github.kurtking514_byte.capricorn.overlay.CapriNotifListener
 data class PhoneStatus(
     val battery: Int,
     val charging: Boolean,
+    /** 3.9b: "~6 H 40 M LEFT", "FULL IN 40 MIN", "LEARNING…" … (see [BatteryTracker]). */
+    val batteryLeft: String,
     /** Next alarm as the phone shows times ("6:30"), or null if none is set. */
     val alarm: String?,
     /** Minutes until that alarm, or null. */
@@ -52,6 +54,7 @@ data class PhoneStatus(
             return PhoneStatus(
                 battery = battery,
                 charging = charging,
+                batteryLeft = BatteryTracker.estimate(context, battery, charging),
                 alarm = alarm,
                 alarmInMin = inMin,
                 unread = CapriNotifListener.unreadCount(context),
