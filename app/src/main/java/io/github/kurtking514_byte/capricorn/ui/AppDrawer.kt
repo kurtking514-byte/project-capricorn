@@ -18,6 +18,13 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.flow.drop
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -55,6 +62,7 @@ fun AppDrawer(
     onToggleDock: (AppEntry) -> Unit,
     onAppInfo: (AppEntry) -> Unit,
     onClose: () -> Unit,
+    closing: Boolean = false,
 ) {
     var query by remember { mutableStateOf("") }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -101,6 +109,21 @@ fun AppDrawer(
 
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
+    // 3.8: lightning reveal on open, bars on close (ui/DrawerReveal.kt)
+    val density = LocalDensity.current
+    val reveal = remember { DrawerReveal() }
+    reveal.bottomInset = with(density) { (bottomInset + 16.dp).toPx() }
+    val grid = rememberLazyGridState()
+    DrawerRevealClock(reveal, density, closing)
+    LaunchedEffect(grid) {
+        snapshotFlow { grid.firstVisibleItemIndex to grid.firstVisibleItemScrollOffset }.drop(1).collect { reveal.free = true }
+    }
+    if (q.isNotEmpty()) reveal.free = true
+    val item: @Composable (String, @Composable () -> Unit) -> Unit = { key, content ->
+        Box(with(reveal) { Modifier.revealItem(key) }) { content() }
+    }
+
+    Box(Modifier.fillMaxSize()) {
     Column(
         Modifier
             .fillMaxSize()
@@ -147,10 +170,11 @@ fun AppDrawer(
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(4),
+            state = grid,
             contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = bottomInset + 16.dp),
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().onGloballyPositioned { reveal.list = it.boundsInRoot() },
         ) {
-            val cell: @Composable (AppEntry) -> Unit = { app ->
+            val cell: @Composable (AppEntry) -> Unit = { app -> item(app.key) {
                 AppItem(
                     app = app,
                     inDock = app.key in dockKeys,
@@ -159,15 +183,15 @@ fun AppDrawer(
                     onToggleDock = onToggleDock,
                     onAppInfo = onAppInfo,
                 )
-            }
+            } }
 
             if (q.isEmpty()) {
                 if (frequent.isNotEmpty()) {
-                    item(key = "h:frequent", span = { GridItemSpan(maxLineSpan) }) { SectionHeader("FREQUENT") }
-                    items(frequent, key = { "f:" + it.key }) { cell(it) }
+                    item(key = "h:frequent", span = { GridItemSpan(maxLineSpan) }) { item("h:frequent") { SectionHeader("FREQUENT") } }
+                    items(frequent, key = { "f:" + it.key }) { item("f:" + it.key) { cell(it) } }
                 }
                 byLetter.forEach { (letter, group) ->
-                    item(key = "h:$letter", span = { GridItemSpan(maxLineSpan) }) { SectionHeader(letter) }
+                    item(key = "h:$letter", span = { GridItemSpan(maxLineSpan) }) { item("h:$letter") { SectionHeader(letter) } }
                     items(group, key = { it.key }) { cell(it) }
                 }
             } else {
@@ -184,6 +208,8 @@ fun AppDrawer(
                 items(results, key = { it.key }) { cell(it) }
             }
         }
+    }
+    reveal.Overlay()
     }
 }
 

@@ -39,6 +39,7 @@ import io.github.kurtking514_byte.capricorn.data.AppRepository
 import io.github.kurtking514_byte.capricorn.data.Prefs
 import io.github.kurtking514_byte.capricorn.overlay.CapriNotifListener
 import io.github.kurtking514_byte.capricorn.overlay.CapriOverlayService
+import io.github.kurtking514_byte.capricorn.ui.DRAWER_CLOSE_MS
 import io.github.kurtking514_byte.capricorn.ui.AppDrawer
 import io.github.kurtking514_byte.capricorn.ui.AppGrab
 import io.github.kurtking514_byte.capricorn.ui.CapriAway
@@ -209,8 +210,8 @@ class MainActivity : ComponentActivity() {
                     )
                     AnimatedVisibility(
                         visible = drawerOpen,
-                        enter = slideInVertically { it } + fadeIn(),
-                        exit = slideOutVertically { it } + fadeOut(),
+                        enter = EnterTransition.None,                              // 3.8: snaps in, rows get struck
+                        exit = fadeOut(tween(durationMillis = 1, delayMillis = DRAWER_CLOSE_MS)), // bars, then gone
                     ) {
                         AppDrawer(
                             apps = apps,
@@ -220,6 +221,7 @@ class MainActivity : ComponentActivity() {
                             onToggleDock = ::toggleDock,
                             onAppInfo = ::openAppInfo,
                             onClose = { drawerOpen = false },
+                            closing = !drawerOpen,
                         )
                     }
                     AnimatedVisibility(visible = showBoot, enter = EnterTransition.None, exit = fadeOut(tween(250))) {
