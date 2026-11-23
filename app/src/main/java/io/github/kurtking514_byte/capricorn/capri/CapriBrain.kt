@@ -104,11 +104,12 @@ class CapriBrain(private val context: Context) {
         )
     ).also { mood = "notif" }
 
-    /** Press and hold on her. */
+    /** Press and hold on her (3.2): the chatbox opens, she's listening, smug about it. */
     fun hold(): String = pick(
-        "Clingy, huh? Fine. Thirty seconds.",
-        "Holding on, are we? I'll allow it.",
-        "Comfy? Don't get used to it.",
+        "Go on. I'm listening.",
+        "You've got my attention. Use it well.",
+        "Talk to me. Make it interesting.",
+        "Fine, I'm all ears. Type.",
     ).also {
         pokeStreak = 0
         mood = "smug"

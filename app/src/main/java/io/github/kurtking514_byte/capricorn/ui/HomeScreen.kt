@@ -59,6 +59,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -106,6 +108,15 @@ fun HomeScreen(
     val keyboard = LocalSoftwareKeyboardController.current
     val typing = WindowInsets.isImeVisible
     var query by remember { mutableStateOf("") }
+    // 3.2: long-press on her puts the cursor in the chatbox and brings up the keyboard
+    val chatFocus = remember { FocusRequester() }
+    val pokeOrListen: (Boolean) -> Unit = { held ->
+        if (held) {
+            chatFocus.requestFocus()
+            keyboard?.show()
+        }
+        onPoke(held)
+    }
 
     // Her line types itself out; she "talks" while it does.
     var shown by remember { mutableIntStateOf(0) }
@@ -207,7 +218,7 @@ fun HomeScreen(
                 moodId = lineId,
                 enter = { enter.value.coerceIn(0f, 1f) },
                 pop = { pop.value },
-                onPoke = onPoke,
+                onPoke = pokeOrListen,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -253,7 +264,8 @@ fun HomeScreen(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .bootSlot(BootDock.CHAT)                 // boot lightning reveals the chatbox
+                    .focusRequester(chatFocus)
+                    .bootSlot(BootDock.CHAT)                // boot lightning reveals the chatbox
                     .graphicsLayer {
                         // struck in the boot: already in place; otherwise it slides in
                         val struck = BootDock.CHAT in BootDock.struck

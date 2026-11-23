@@ -116,7 +116,7 @@ pure gesture logic goes straight into the app. Taps on her: 1 tap keeps her poke
 2 taps is now "do that again" (the double-poke shrug goes away; shrug still appears in idle moves).
 On her:
 - [x] 3.1 (2026-11-23, builds; not seen on phone) Double-tap her = repeat your last chat command that did something; she snaps to a smirk (`CapriBrain.repeatLast`, `lastCommand`). Double-tap = 2nd tap within 350 ms (`DOUBLE_TAP_MS`); the first tap still shows sass. Nothing to repeat yet → teasing line. A slower 2nd poke (0.35–1.5 s) still shrugs; 3+ quick = annoyed
-- [ ] 3.2 Long-press her = double blink, chatbox opens with the keyboard up (her "smug" hold reaction is dropped or moved; decide in this step)
+- [x] 3.2 (2026-11-23, builds; not seen on phone) Long-press her = the show's double blink (`listenTick`/`listenBlink` in `CapriSpriteFigure`), the chatbox gets focus and the keyboard comes up (`chatFocus` in `HomeScreen`). Smug kept: she goes to `idle_smirk` with new "I'm listening" lines in `CapriBrain.hold()`
 - [ ] 3.3 Drag an app onto her = red hit, she "grabs" it: pin to dock, app info, uninstall, hide (preview the grab first)
 - [ ] 3.4 Swipe her sideways = she glitches out (green + crimson bars), clean home; swipe back = glitches back in
 On the empty screen:

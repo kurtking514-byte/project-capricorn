@@ -426,8 +426,21 @@ fun CapriSpriteFigure(
     }
     val dozing = CapriTime.dozing
 
+    // 3.2: long-press = she's listening: the show's double blink (83 ms closed, 333 ms apart)
+    // plays first, over everything else, then her smug pose and line.
+    var listenTick by remember { mutableIntStateOf(0) }
+    var listenBlink by remember { mutableStateOf(false) }
+    LaunchedEffect(listenTick) {
+        if (listenTick == 0) return@LaunchedEffect
+        listenBlink = true; delay(BLINK_CLOSED_MS)
+        listenBlink = false; delay(BLINK_DOUBLE_APART_MS - BLINK_CLOSED_MS)
+        listenBlink = true; delay(BLINK_CLOSED_MS)
+        listenBlink = false
+    }
+
     val doing = activity
     val name = when {
+        listenBlink -> "idle_blink_closed"
         dozing && !speaking -> "idle_blink_closed"
         speaking && current in setOf("neutral", "happy", "smirk", "wave") && doing == null -> mouth
         looking && !speaking -> when {
@@ -493,7 +506,7 @@ fun CapriSpriteFigure(
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { poke(false) },
-                    onLongPress = { poke(true) },
+                    onLongPress = { listenTick++; poke(true) },
                 )
             }
     ) {
