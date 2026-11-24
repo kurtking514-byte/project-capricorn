@@ -41,6 +41,7 @@ import io.github.kurtking514_byte.capricorn.overlay.CapriNotifListener
 import io.github.kurtking514_byte.capricorn.overlay.CapriOverlayService
 import io.github.kurtking514_byte.capricorn.ui.DRAWER_CLOSE_MS
 import io.github.kurtking514_byte.capricorn.ui.AppDrawer
+import io.github.kurtking514_byte.capricorn.ui.ClassGrid
 import io.github.kurtking514_byte.capricorn.ui.StatusScan
 import io.github.kurtking514_byte.capricorn.capri.PhoneStatus
 import io.github.kurtking514_byte.capricorn.capri.BatteryTracker
@@ -66,6 +67,7 @@ class MainActivity : ComponentActivity() {
     private var dockKeys by mutableStateOf<List<String>>(emptyList())
     private var launchCounts by mutableStateOf<Map<String, Int>>(emptyMap())
     private var drawerOpen by mutableStateOf(false)
+    private var classesOpen by mutableStateOf(false)               // 3.9d week grid
     private var showBoot by mutableStateOf(true)
     private var resumeTick by mutableIntStateOf(0)
     private var commandId by mutableIntStateOf(0)
@@ -85,6 +87,7 @@ class MainActivity : ComponentActivity() {
             brain.consumeActed()
             return
         }
+        if (brain.consumeClasses()) classesOpen = true     // 3.9d: chat "classes" opens the week grid
         capriLine = line
         mood = brain.mood
         lineId++
@@ -164,7 +167,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             CapriTheme {
                 // A launcher never "goes back" past home; back just closes the drawer.
-                BackHandler { drawerOpen = false }
+                BackHandler { if (classesOpen) classesOpen = false else drawerOpen = false }
 
                 val byKey = remember(apps) { apps.associateBy { it.key } }
                 val dockApps = remember(byKey, dockKeys) { dockKeys.mapNotNull { byKey[it] } }
@@ -234,6 +237,7 @@ class MainActivity : ComponentActivity() {
                             skin = skin,
                         )
                     }
+                    if (classesOpen) ClassGrid(onClose = { classesOpen = false })
                     AnimatedVisibility(visible = showBoot, enter = EnterTransition.None, exit = fadeOut(tween(250))) {
                         BootOverlay(skin = skin, onDone = {
                             if (showBoot) {
@@ -262,6 +266,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         drawerOpen = false
+        classesOpen = false
     }
 
     override fun onDestroy() {
@@ -286,6 +291,7 @@ class MainActivity : ComponentActivity() {
         prefs.recordLaunch(app.key)
         launchCounts = prefs.launchCounts()
         drawerOpen = false
+        classesOpen = false
         true
     } catch (e: Exception) {
         Toast.makeText(this, "Couldn't open ${app.label}", Toast.LENGTH_SHORT).show()

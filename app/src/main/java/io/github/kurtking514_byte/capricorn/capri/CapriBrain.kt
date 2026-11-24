@@ -23,6 +23,9 @@ class CapriBrain(private val context: Context) {
     var mood: String = "neutral"
         private set
 
+    /** 3.9d: true once if the last reply asked for the week grid; she then wears a smirk. */
+    fun consumeClasses(): Boolean = (mood == "classes").also { if (it) mood = "smirk" }
+
     fun greeting(): String = (when (LocalTime.now().hour) {
         in 5..10 -> pick("Rise and shine. Or just rise. Baby steps.", "Morning, sleepyhead. What are we doing first?")
         in 11..17 -> pick("Miss me? Course you did.", "There you are. What do you want to do?")
@@ -240,6 +243,11 @@ class CapriBrain(private val context: Context) {
         // show every pose once, 2 s each (handled by CapriSpriteFigure)
         if (t == "poses" || t == "pose" || t == "show poses") {
             return done(pick("Fine. Full catalogue. Don't blink.", "Runway mode. Try to keep up."), "showcase")
+        }
+
+        // 3.9d: the week grid (opened by MainActivity.say)
+        if (Regex("^(my |show |open )?(classes|class|timetable|schedule|week)$").matches(t)) {
+            return done(pick("Your week. Try to show up.", "Here's the damage.", "Your schedule. Don't make that face."), "classes")
         }
 
         // 3.9c: classes ("math mon wed 8 to 9:30", "move math to 1pm", "remove math", "what's today")
