@@ -110,12 +110,23 @@ class CapriBrain(private val context: Context) {
             "${s.battery}%. I'm running on fumes here.",
         ), "annoyed")
         s.charging -> done(pick("Charging. Finally, some respect.", "Plugged in. Look at you, being responsible."), "smug")
+        // 3.9c classes
+        s.classes.now != null && s.classes.now.endsIn <= 5 -> done(pick(
+            "${s.classes.now.endsIn} minutes of ${cap(s.classes.now.slot.name)} left. Try to look awake.",
+            "${cap(s.classes.now.slot.name)} ends in ${s.classes.now.endsIn}. Hold it together.",
+        ), "smirk")
+        s.classes.now == null && s.classes.next?.inMin != null && s.classes.next.inMin <= 10 -> done(pick(
+            "${cap(s.classes.next.slot.name)} in ${s.classes.next.inMin}. Move.",
+            "${cap(s.classes.next.slot.name)} starts in ${s.classes.next.inMin} minutes. Why are you still here?",
+        ), "annoyed")
         s.alarmInMin != null && s.alarmInMin in 0..60 -> done(pick(
             "Alarm in ${s.alarmInMin} minutes. Sleep fast.",
             "${s.alarmInMin} minutes till your alarm. Why are you awake?",
         ), "smirk")
         s.unread == null -> done("Can't count your notifs without access. Say \"notifs\".", "shrug")
         s.unread == 0 -> done(pick("Zero unread. Nobody misses you. Lucky me.", "Inbox clean. Suspicious."), "smirk")
+        s.classes.hasClasses && s.classes.now == null && s.classes.next?.inMin == null ->
+            done(pick("No more classes. Go touch grass.", "School's done. Try not to waste it."), "smug")
         else -> done(pick("There. Don't make me repeat it.", "Scanned. You're welcome.", "All yours. Try to keep up."), "smirk")
     }
 
@@ -229,6 +240,11 @@ class CapriBrain(private val context: Context) {
         // show every pose once, 2 s each (handled by CapriSpriteFigure)
         if (t == "poses" || t == "pose" || t == "show poses") {
             return done(pick("Fine. Full catalogue. Don't blink.", "Runway mode. Try to keep up."), "showcase")
+        }
+
+        // 3.9c: classes ("math mon wed 8 to 9:30", "move math to 1pm", "remove math", "what's today")
+        ClassChat.handle(context, text)?.let { r ->
+            return if (r.acted) done(r.line, r.mood) else r.line.also { mood = r.mood }
         }
 
         // alarms
@@ -371,6 +387,8 @@ class CapriBrain(private val context: Context) {
     }
 
     private fun pick(vararg lines: String): String = lines.random()
+
+    private fun cap(s: String) = s.lowercase().replaceFirstChar { it.uppercase() }
 }
 
 /** Pokes closer together than this count as one streak. */

@@ -32,6 +32,8 @@ data class PhoneStatus(
     val silent: Boolean,
     val dnd: Boolean,
     val location: Boolean,
+    /** 3.9c: class now / next class from the saved timetable ([Timetable]). */
+    val classes: Timetable.Status = Timetable.Status(false, null, null),
 ) {
     companion object {
         fun read(context: Context): PhoneStatus {
@@ -65,6 +67,7 @@ data class PhoneStatus(
                 silent = audio != null && audio.ringerMode != AudioManager.RINGER_MODE_NORMAL,
                 dnd = filter != NotificationManager.INTERRUPTION_FILTER_ALL && filter != NotificationManager.INTERRUPTION_FILTER_UNKNOWN,
                 location = loc != null && LocationManagerCompat.isLocationEnabled(loc),
+                classes = Timetable.status(context),
             )
         }
     }

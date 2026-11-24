@@ -31,13 +31,14 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kurtking514_byte.capricorn.capri.PhoneStatus
+import io.github.kurtking514_byte.capricorn.capri.Timetable
 import io.github.kurtking514_byte.capricorn.ui.theme.CapriColors
 import kotlin.math.roundToInt
 
 /**
  * 3.9a: hold two fingers on the home screen = status scan, "Readout" style (designed in
  * preview/scan-lab.html). After the C3 red hit a black panel (crimson edge, purple offset) snaps in
- * under the clock: a status icon strip on top, then BATTERY / ALARM / NOTIFS lines, each struck by a
+ * under the clock: a status icon strip on top, then BATTERY / CLASS NOW / NEXT CLASS / ALARM / NOTIFS lines, each struck by a
  * bolt from the top and split green/crimson for one 83 ms step as it snaps in. Held 3.5 s, then it
  * breaks into 2 steps of bars. Classes, the battery estimate, screen time and weather come in 3.9b–e.
  */
@@ -68,8 +69,26 @@ private val SEG_OFF = Color(0xFF1C1824)
 
 private class Row(val label: String, val value: String, val bad: Boolean = false, val dim: Boolean = false, val bar: Boolean = false, val sub: String? = null)
 
+private fun inText(min: Int) = if (min < 60) "IN $min MIN" else "IN ${min / 60} H ${min % 60} M"
+
+private fun short(name: String) = if (name.length <= 14) name else name.take(13) + "…"
+
+/** 3.9c: CLASS NOW + NEXT CLASS (or one "not set" line when there's no timetable yet). */
+private fun classRows(c: Timetable.Status): List<Row> {
+    if (!c.hasClasses) return listOf(Row("CLASSES", "NOT SET", dim = true, sub = "TELL ME IN CHAT: MATH MON 8 TO 9"))
+    val now = c.now?.let { Row("CLASS NOW", short(it.slot.name), bad = it.endsIn <= 5, sub = "ENDS ${inText(it.endsIn)}") }
+        ?: Row("CLASS NOW", "FREE", dim = true)
+    val next = c.next?.let { n ->
+        val time = Timetable.fmt(n.slot.start)
+        if (n.inMin != null) Row("NEXT CLASS", short(n.slot.name), bad = n.inMin <= 10, sub = "$time · ${inText(n.inMin)}")
+        else Row("NEXT CLASS", short(n.slot.name), sub = "$time · ${n.whenLabel}")
+    } ?: Row("NEXT CLASS", "NONE", dim = true)
+    return listOf(now, next)
+}
+
 private fun rows(s: PhoneStatus): List<Row> = listOf(
     Row("BATTERY", "${s.battery}%", bad = s.battery <= 15 && !s.charging, bar = true, sub = s.batteryLeft),
+) + classRows(s.classes) + listOf(
     when {
         s.alarm == null -> Row("ALARM", "NONE", dim = true)
         s.alarmInMin != null && s.alarmInMin in 0..60 -> Row("ALARM", "IN ${s.alarmInMin} MIN", bad = true)
@@ -108,8 +127,9 @@ fun StatusScanPanel() {
         val strip = 34.dp.toPx()
         val lh = 52.dp.toPx()
         val py = topInset + size.height * 0.15f
-        val extra = 16.dp.toPx()                           // the battery line is taller: its estimate sits under the bar
-        val ph = strip + 12.dp.toPx() + list.size * lh + extra
+        val extra = 16.dp.toPx()                           // lines with small text under them are taller
+        val tops = list.runningFold(0f) { acc, r -> acc + lh + (if (r.sub != null) extra else 0f) }
+        val ph = strip + 12.dp.toPx() + tops.last()
         val x0 = px + 16.dp.toPx()
 
         if (k >= endAt) {                                   // break into bars, 2 steps
@@ -143,7 +163,7 @@ fun StatusScanPanel() {
             val at = PANEL_AT + i * ROW_GAP
             if (k < at) return@forEachIndexed
             val ki = k - at
-            val top = py + strip + 10.dp.toPx() + i * lh + (if (i > 0) extra else 0f)
+            val top = py + strip + 10.dp.toPx() + tops[i]
             val valueY = top + 14.dp.toPx()
             // bolt from the top of the screen onto the line
             if (ki < BOLT_MS) {
@@ -184,6 +204,8 @@ fun StatusScanPanel() {
                     val c = when { row.bad -> GLITCH_CRIMSON; s.charging -> GLITCH_GREEN; else -> CapriColors.Dim }
                     text(measurer, sub, bx, segTop + sh + 4.dp.toPx(), 11.sp, c, FontFamily.Monospace)
                 }
+            } else row.sub?.let { sub ->                    // 3.9c: class times under the name
+                text(measurer, sub, x0, valueY + 30.dp.toPx(), 11.sp, if (row.bad) GLITCH_CRIMSON else CapriColors.Dim, FontFamily.Monospace)
             }
         }
     }
