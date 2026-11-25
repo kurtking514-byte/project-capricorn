@@ -3,6 +3,7 @@ package io.github.kurtking514_byte.capricorn.ui
 import android.content.Context
 import android.os.BatteryManager
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
@@ -48,6 +49,15 @@ object Psyche {
     var current by mutableStateOf(PsycheKind.NORMAL)
         private set
 
+    /** 4.3: the color the clock + speech bubble use right now (flickers old / new during a switch). */
+    var accent by mutableStateOf(PsycheKind.NORMAL.accent)
+    /** 4.3: when the psyche last switched (uptime ms), and from what. 0 = never. */
+    var switchedAt by mutableLongStateOf(0L)
+        private set
+    var previous = PsycheKind.NORMAL
+        private set
+    private var started = false
+
     private var screenMs = 0L
     private var screenAt = 0L
 
@@ -61,11 +71,17 @@ object Psyche {
             screenAt = now
         }
         val hour = java.time.LocalTime.now().hour
-        current = when {
+        val next = when {
             (battery in 0..15 && !charging) || screenMs >= 5 * 60 * 60_000L -> PsycheKind.PROTECTIVE
             hour in 5..10 -> PsycheKind.CALM
             hour < 5 -> PsycheKind.CHAOTIC
             else -> PsycheKind.NORMAL
+        }
+        if (!started) { started = true; current = next; accent = next.accent; return }   // first check: no glitch
+        if (next != current) {
+            previous = current
+            current = next
+            switchedAt = android.os.SystemClock.uptimeMillis()
         }
     }
 }

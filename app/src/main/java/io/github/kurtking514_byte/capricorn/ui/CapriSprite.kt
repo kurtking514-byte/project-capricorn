@@ -526,6 +526,22 @@ fun CapriSpriteFigure(
         headTop(size.height - CapriMeshPainter.GROUND * h + skin.top(poseForHead) * h)
     }
 
+    // 4.3: psyche switch = heavy green + crimson bars over her (1 / 0.6 / 0.3, 83 ms each) while the
+    // accent flickers new / old / new; she snaps into the new psyche's first favorite pose.
+    var switchMs by remember { mutableFloatStateOf(SWITCH_MS) }
+    LaunchedEffect(Psyche.switchedAt) {
+        if (Psyche.switchedAt == 0L) return@LaunchedEffect
+        Psyche.current.poses.firstOrNull { skin.has(it) }?.let { activity = it; lastActivity = it }
+        val new = Psyche.current.accent
+        val old = Psyche.previous.accent
+        do {
+            withFrameMillis { }
+            switchMs = (android.os.SystemClock.uptimeMillis() - Psyche.switchedAt).toFloat()
+            Psyche.accent = when ((switchMs / GLITCH_STEP_MS).toInt()) { 1 -> old; else -> new }
+        } while (switchMs < SWITCH_MS)
+        Psyche.accent = new
+    }
+
     // 3.4: ms since she glitched out / back in (real time, runs only during the glitch)
     var awayMs by remember { mutableFloatStateOf(AWAY_IN_MS) }
     LaunchedEffect(CapriAway.changedAt) {
@@ -596,6 +612,10 @@ fun CapriSpriteFigure(
             else painter.draw(this, to, 1f, t, tilt[0], tilt[1], 0f, topInset = topInset)
             val step = (ms / GLITCH_STEP_MS).toInt()
             drawGlitchBars(painter, to, topInset, step, POSE_BARS.getOrElse(step) { 0f }, glitchSeed)
+            if (switchMs < SWITCH_MS) {
+                val s = (switchMs / GLITCH_STEP_MS).toInt()
+                drawGlitchBars(painter, to, topInset, s, SWITCH_BARS.getOrElse(s) { 0f }, glitchSeed + 91)
+            }
             return@Canvas
         }
         from?.let {
@@ -603,9 +623,17 @@ fun CapriSpriteFigure(
         }
         skin.bitmap(shownName)?.let {
             painter.draw(this, it, if (fromName == null) 1f else a, t, tilt[0], tilt[1], 0f, topInset = topInset)
+            if (switchMs < SWITCH_MS) {                        // 4.3 psyche switch bars
+                val s = (switchMs / GLITCH_STEP_MS).toInt()
+                drawGlitchBars(painter, it, topInset, s, SWITCH_BARS.getOrElse(s) { 0f }, glitchSeed + 91)
+            }
         }
     }
 }
+
+/** 4.3: psyche switch glitch length and bar strength per 83 ms step (user picked "Bars + color flicker"). */
+private const val SWITCH_MS = 250f
+private val SWITCH_BARS = floatArrayOf(1f, 0.6f, 0.3f)
 
 /**
  * One frame of the pose-change glitch. The screen is cut into uneven horizontal slices;
