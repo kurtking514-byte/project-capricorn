@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.PowerManager
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -60,7 +61,13 @@ import kotlinx.coroutines.delay
  * [line] = her line under the row, [how] = what she says when you tap ALLOW and Android's page
  * opens, [yes] = her reaction when it turns on. Only HOME is needed; the rest just switch features on.
  */
-enum class SetupItem(val title: String, val line: String, val how: String, val yes: String, val needed: Boolean = false) {
+enum class SetupItem(
+    val title: String, val line: String, val how: String, val yes: String,
+    val needed: Boolean = false,
+    val group: String = "PERMISSIONS",
+    /** 4.5: Android can't tell Capri if this one is done, so after ALLOW the chip becomes DONE? and you tick it. */
+    val self: Boolean = false,
+) {
     HOME("Home app", "Make me your home screen. Obviously.", "Pick Capri. Then I'm home.", "Finally. I live here now.", needed = true),
     OVERLAY("Overlay", "Let me follow you into other apps. Mini me.",
         "Tap \"Downloaded apps\", then \"Capri overlay\", switch me on.", "Now I'm everywhere. Try to behave."),
@@ -73,7 +80,17 @@ enum class SetupItem(val title: String, val line: String, val how: String, val y
     LOCATION("Rough location", "For the weather. Rounded to about 10 km.",
         "Tap allow. Approximate is plenty.", "Sky, located. I'll warn you about rain."),
     CONTACTS("Contacts", "So \"call mom\" knows who mom is.",
-        "Tap allow. Names and numbers, that's all.", "Got your people. I won't judge. Much.");
+        "Tap allow. Names and numbers, that's all.", "Got your people. I won't judge. Much."),
+
+    // 4.5: so Realme's battery cleaner leaves her background part alone (overlay, face down, notifs)
+    BATTERY_SAVER("Battery saver", "Tell Android to stop putting me to sleep.",
+        "Tap allow. I sip battery, promise.", "Unkillable. Mostly.", group = "BATTERY"),
+    AUTO_LAUNCH("Auto launch", "Realme's own switches. Battery usage → both on.",
+        "Battery usage → switch on \"Allow auto launch\" and \"Allow background activity\". Then come back and tap DONE?.",
+        "Auto launch on. I'll be back. Always.", group = "BATTERY", self = true),
+    RECENTS_LOCK("Lock in recents", "Recent apps → ⋮ on my card → Lock.",
+        "Open recent apps, tap the ⋮ on my card (or hold it), pick Lock. Then tap DONE?.",
+        "Locked in. Clear-all can't touch me now.", group = "BATTERY", self = true);
 
     fun isOn(context: Context): Boolean = when (this) {
         HOME -> isHome(context)
@@ -83,6 +100,8 @@ enum class SetupItem(val title: String, val line: String, val how: String, val y
         DND -> FaceDown.fullSilentAllowed(context)
         LOCATION -> Weather.allowed(context)
         CONTACTS -> Contacts.allowed(context)
+        BATTERY_SAVER -> context.getSystemService(PowerManager::class.java)?.isIgnoringBatteryOptimizations(context.packageName) == true
+        AUTO_LAUNCH, RECENTS_LOCK -> Setup.ticked(context, this)
     }
 
     companion object {
@@ -103,6 +122,14 @@ object Setup {
     var line by mutableStateOf("")
 
     fun deny() { line = listOf("Changed your mind? Typical.", "No? Fine. That bit of me stays off.").random() }
+
+    /** 4.5: the rows you tick yourself, saved in prefs "setup". */
+    fun ticked(context: Context, item: SetupItem) =
+        context.getSharedPreferences("setup", Context.MODE_PRIVATE).getBoolean(item.name, false)
+
+    fun tick(context: Context, item: SetupItem) {
+        context.getSharedPreferences("setup", Context.MODE_PRIVATE).edit().putBoolean(item.name, true).apply()
+    }
 }
 
 private val INTRO = listOf(
@@ -124,6 +151,7 @@ fun SetupScreen(onAllow: (SetupItem) -> Unit, onClose: (later: Boolean) -> Unit)
     val ctx = LocalContext.current
     var on by remember { mutableStateOf(SetupItem.entries.filter { it.isOn(ctx) }.toSet()) }
     var glitchIds by remember { mutableStateOf(mapOf<SetupItem, Int>()) }
+    var asked by remember { mutableStateOf(setOf<SetupItem>()) }       // 4.5: self rows showing DONE?
     LaunchedEffect(Unit) {
         Setup.line = if (on.size == SetupItem.entries.size) ALL_ON else INTRO.random()
         while (true) {
@@ -166,9 +194,22 @@ fun SetupScreen(onAllow: (SetupItem) -> Unit, onClose: (later: Boolean) -> Unit)
             Text(Setup.line, fontSize = 14.sp, color = CapriColors.Text, lineHeight = 19.sp)
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            for (item in SetupItem.entries) SetupRow(item, item in on, glitchIds[item] ?: 0) {
-                Setup.line = item.how
-                onAllow(item)
+            SetupItem.entries.groupBy { it.group }.forEach { (group, items) ->
+                Text(
+                    group, Modifier.padding(top = 10.dp, bottom = 6.dp),
+                    fontFamily = FontFamily.Monospace, fontSize = 10.sp, letterSpacing = 2.sp, color = GLITCH_CRIMSON,
+                )
+                Box(Modifier.fillMaxWidth().height(2.dp).background(GLITCH_CRIMSON))
+                for (item in items) SetupRow(item, item in on, item in asked, glitchIds[item] ?: 0) {
+                    if (item in asked) {
+                        Setup.tick(ctx, item)                     // the poll above sees it, glitches + reacts
+                        asked = asked - item
+                    } else {
+                        Setup.line = item.how
+                        if (item.self) asked = asked + item
+                        onAllow(item)
+                    }
+                }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -196,7 +237,7 @@ private fun Segments(count: Int, total: Int) {
 }
 
 @Composable
-private fun SetupRow(item: SetupItem, on: Boolean, glitchId: Int, onAllow: () -> Unit) {
+private fun SetupRow(item: SetupItem, on: Boolean, ask: Boolean, glitchId: Int, onAllow: () -> Unit) {
     // 2 steps of 83 ms: green + crimson copies peek out on both sides while the chip jumps 2 dp
     var step by remember { mutableIntStateOf(-1) }
     LaunchedEffect(glitchId) {
@@ -228,12 +269,15 @@ private fun SetupRow(item: SetupItem, on: Boolean, glitchId: Int, onAllow: () ->
                         } else if (step == 1) drawRect(GLITCH_GREEN, Offset(d, 0f), size)
                     }
                     .background(Color.Black)
-                    .border(1.5.dp, if (on) GLITCH_GREEN else CapriColors.Pink)
+                    .border(1.5.dp, if (on) GLITCH_GREEN else if (ask) CapriColors.Acid else CapriColors.Pink)
                     .then(if (on) Modifier else Modifier.clickable(onClick = onAllow))
                     .padding(vertical = 9.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(if (on) "ON" else "ALLOW", fontFamily = FAN_FONT, fontSize = 12.sp, color = if (on) GLITCH_GREEN else CapriColors.Text)
+                Text(
+                    if (on) "ON" else if (ask) "DONE?" else "ALLOW", fontFamily = FAN_FONT, fontSize = 12.sp,
+                    color = if (on) GLITCH_GREEN else if (ask) CapriColors.Acid else CapriColors.Text,
+                )
             }
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(ROW_LINE))

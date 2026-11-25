@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- 3.13: "call mom" finds the contact (opens the dialer; Capri never calls by herself) -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- 4.5: the "let Capri run in the background" pop-up on the setup screen -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- 3.10: face down = full silent (user allows "Do Not Disturb access" via chat "quiet") -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />

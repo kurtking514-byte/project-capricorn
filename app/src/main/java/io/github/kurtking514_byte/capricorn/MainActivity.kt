@@ -166,6 +166,13 @@ class MainActivity : ComponentActivity() {
             SetupItem.DND -> openSetting(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
             SetupItem.LOCATION -> askSetupPerm.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
             SetupItem.CONTACTS -> askSetupPerm.launch(Manifest.permission.READ_CONTACTS)
+            SetupItem.BATTERY_SAVER -> try {                                   // 4.5: Android's own yes/no pop-up
+                startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.fromParts("package", packageName, null)))
+            } catch (e: Exception) {
+                openSetting(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+            }
+            SetupItem.AUTO_LAUNCH -> openSetting(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null))
+            SetupItem.RECENTS_LOCK -> Unit                                     // only her instructions
         }
     }
 
