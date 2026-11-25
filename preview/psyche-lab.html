@@ -82,7 +82,7 @@
 
   <div class="phone" id="phone">
     <canvas id="c"></canvas>
-    <div class="clock"><div class="t" id="clk">8:40</div><div class="d" id="date">WED 25 NOV</div><div class="tag" id="tag">PSYCHE · CALM</div></div>
+    <div class="clock"><div class="t" id="clk">8:40</div><div class="d" id="date">WED 25 NOV</div></div>
     <div class="bubble" id="bubble"><b>CAPRI</b><span id="line"></span></div>
     <div class="chat">Talk to Capri…</div>
   </div>
@@ -106,7 +106,6 @@
     <div class="row" id="tells">
       <div class="row-label">How you can tell (turn each on/off)</div>
       <button data-t="poses" class="on">Favorite poses</button>
-      <button data-t="tag" class="on">Tag under clock</button>
       <button data-t="rhythm" class="on">Idle rhythm</button>
       <button data-t="accent" class="on">Accent color</button>
     </div>
@@ -141,7 +140,7 @@
 
   const phone = document.getElementById("phone"), cv = document.getElementById("c"), ctx = cv.getContext("2d");
   const $ = id => document.getElementById(id);
-  const tells = { poses: true, tag: true, rhythm: true, accent: true };
+  const tells = { poses: true, rhythm: true, accent: true };      // the clock tag was removed (user, 4.1)
   let choice = "AUTO";
 
   // ---------- stand-in figure (same original shapes as the Grab Lab), safe standing poses only ----------
@@ -247,8 +246,6 @@
     const p = choice === "AUTO" ? autoPsyche() : choice;
     const ps = PSY[p];
     document.documentElement.style.setProperty("--accent", tells.accent ? ps.accent : "#8EF5ED");
-    const tag = $("tag");
-    tag.hidden = !tells.tag; tag.textContent = "PSYCHE · " + p; tag.classList.toggle("prot", p === "PROTECTIVE");
     $("rtitle").textContent = p.charAt(0) + p.slice(1).toLowerCase();
     const set = tells.poses ? ps.poses : ALL;
     const hold = tells.rhythm ? ps.hold : PSY.NORMAL.hold;
