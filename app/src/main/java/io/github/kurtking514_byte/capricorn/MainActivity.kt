@@ -20,6 +20,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -372,7 +373,7 @@ class MainActivity : ComponentActivity() {
                     if (classesOpen) ClassGrid(onClose = { classesOpen = false })
                     if (gesturesOpen) GestureScreen(onClose = { gesturesOpen = false })
                     if (setupOpen) SetupScreen(onAllow = ::setupAllow, onClose = ::closeSetup)
-                    AnimatedVisibility(visible = showBoot, enter = EnterTransition.None, exit = fadeOut(tween(250))) {
+                    AnimatedVisibility(visible = showBoot, enter = EnterTransition.None, exit = ExitTransition.None) {   // 4.6d: snaps off
                         BootOverlay(skin = skin, onDone = {
                             if (showBoot) {
                                 showBoot = false

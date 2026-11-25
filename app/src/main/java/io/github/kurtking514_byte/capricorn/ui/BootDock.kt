@@ -28,6 +28,9 @@ object BootDock {
     /** Slot index used for the chatbox (dock slots are 0..4). */
     const val CHAT = 5
 
+    /** 4.6d: slot index used for the clock, struck at the same moment as the chatbox and apps. */
+    const val CLOCK = 6
+
     /** How long a struck slot stays solid crimson, then how long it glitches in (seconds). */
     const val FLASH = 0.07f
     const val GLITCH = 0.16f

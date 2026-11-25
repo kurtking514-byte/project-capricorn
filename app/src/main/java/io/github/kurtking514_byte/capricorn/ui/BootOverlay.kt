@@ -23,6 +23,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -91,14 +92,10 @@ fun BootOverlay(skin: CapriSkin?, onDone: () -> Unit) {
             ) { finish() }
     ) {
         val t = time
-        // black over everything; once the strikes start, only down to the dock so the real dock shows
-        val striking = still != null && t >= plan.strikeStart && BootDock.slots.isNotEmpty()
-        if (striking) {
-            val dockTop = BootDock.slots.values.minOf { it.top } - 14.dp.toPx()
-            drawRect(CapriColors.Black, size = Size(size.width, dockTop))
-        } else {
-            drawRect(CapriColors.Black)
-        }
+        // 4.6d: black until the last flash; then it glitches away in 3 steps of 83 ms while she
+        // glitches in, and the wallpaper is behind her (home parts stay hidden until struck)
+        if (t < plan.flashEnd) drawRect(CapriColors.Black)
+        else drawTear(plan, ((t - plan.flashEnd) * 1000f / GLITCH_STEP_MS).toInt())
         val inset = size.height * 0.42f          // keeps her the size she is on the home screen
         val rest = size.height * 0.17f           // her feet sit above the chatbox and dock
 
@@ -145,7 +142,8 @@ fun BootOverlay(skin: CapriSkin?, onDone: () -> Unit) {
                 val bs = t - hitAt - b.delay
                 if (bs < 0f || bs >= BootDock.FLASH + 0.02f) continue
                 // the chatbox is wide, so its bolts land spread along it
-                val cx = if (i == BootDock.CHAT) slot.center.x + b.sx * slot.width else slot.center.x
+                val wide = i == BootDock.CHAT || i == BootDock.CLOCK
+                val cx = if (wide) slot.center.x + b.sx * slot.width else slot.center.x
                 val ty = slot.top
                 val x0 = cx + b.sx * size.width
                 val bolt = Path().apply {
@@ -175,11 +173,27 @@ private const val PLACEHOLDERS = 4      // tiles struck when no apps are pinned
 
 private fun hasDock() = BootDock.slots.keys.any { it < MAX_DOCK }
 
-/** Strike order: the chatbox first, then the pinned apps (or the placeholder tiles if none are pinned). */
+/** Strike order: the clock and chatbox, then the pinned apps (or the placeholder tiles if none are pinned). All at once. */
 private fun strikeOrder(plan: BootPlan): List<Int> {
-    val chat = if (BootDock.CHAT in BootDock.slots) listOf(BootDock.CHAT) else emptyList()
+    val top = listOf(BootDock.CLOCK, BootDock.CHAT).filter { it in BootDock.slots }
     val dock = if (hasDock()) plan.order.filter { it in BootDock.slots } else plan.order.filter { it < PLACEHOLDERS }
-    return chat + dock
+    return top + dock
+}
+
+/** 4.6d: one horizontal strip of the black as it glitches away (fractions of the screen). */
+private class Strip(val y: Float, val h: Float, val keep: Boolean, val bar: Color?, val x: Float, val w: Float)
+
+/** 4.6d: how much of the black is left in each 83 ms step (picked in preview/boot-lab.html). */
+private val TEAR_KEEP = floatArrayOf(0.6f, 0.3f, 0.1f)
+
+private fun DrawScope.drawTear(plan: BootPlan, step: Int) {
+    val strips = plan.tear.getOrNull(step) ?: return
+    for (s in strips) {
+        val y = s.y * size.height
+        val h = s.h * size.height
+        if (s.keep) drawRect(CapriColors.Black, Offset(0f, y), Size(size.width, h))
+        else if (s.bar != null) drawRect(s.bar, Offset(s.x * size.width, y), Size(s.w * size.width, maxOf(2f, h * 0.35f)))
+    }
 }
 
 /** Where the placeholder tiles sit: a row near the bottom, where the dock is. */
@@ -240,7 +254,8 @@ private class BootPlan(
     val arriveSeed: Int,
     val order: List<Int>,          // dock indices in strike order
     val strikeAt: FloatArray,      // seconds after strikeStart, by strike rank
-    val bolts: List<List<Bolt>>,   // per dock index
+    val bolts: List<List<Bolt>>,   // per dock index (+ chatbox, clock)
+    val tear: List<List<Strip>>,   // 4.6d: the black glitching away, one list per step
 ) {
     val strikeStart = flashEnd + RAISE_AT + TO_RAISED
 
@@ -268,16 +283,28 @@ private class BootPlan(
                 val h = hits[idx]
                 hits[idx] = Hit(h.at, h.dur, Shape.FULL, h.seed, h.v)
             }
-            val strikeAt = FloatArray(MAX_DOCK + 1)        // + 1 for the chatbox
+            val strikeAt = FloatArray(MAX_DOCK + 2)        // + chatbox + clock
             // chatbox and every pinned app are struck at the SAME moment (user rule)
             for (j in strikeAt.indices) strikeAt[j] = STRIKE_DELAY
-            val bolts = List(MAX_DOCK + 1) {
+            val bolts = List(MAX_DOCK + 2) {
                 // first bolt lands exactly on the hit; the others within the slot's crimson flash
                 List(3 + r.nextInt(2)) { k ->
                     Bolt(rnd(-0.4f, 0.4f), if (k == 0) 0f else rnd(0f, 0.03f), FloatArray(8) { rnd(-1f, 1f) })
                 }
             }
-            return BootPlan(hits, t + 0.06f, r.nextInt(1_000_000), (0 until MAX_DOCK).shuffled(r), strikeAt, bolts)
+            val tear = TEAR_KEEP.map { keep ->
+                buildList {
+                    var y = 0f
+                    while (y < 1f) {
+                        val h = rnd(0.01f, 0.06f)
+                        val torn = r.nextFloat() >= keep
+                        val bar = if (torn && r.nextFloat() < 0.35f) (if (r.nextFloat() < 0.55f) GLITCH_GREEN else GLITCH_CRIMSON) else null
+                        add(Strip(y, h, !torn, bar, rnd(-0.1f, 0.6f), rnd(0.15f, 0.6f)))
+                        y += h
+                    }
+                }
+            }
+            return BootPlan(hits, t + 0.06f, r.nextInt(1_000_000), (0 until MAX_DOCK).shuffled(r), strikeAt, bolts, tear)
         }
     }
 }

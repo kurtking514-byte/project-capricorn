@@ -149,7 +149,7 @@ fun HomeScreen(
     val pop = remember { Animatable(1f) }
     val flash = remember { Animatable(0f) }
     LaunchedEffect(lineId > 0) {
-        if (lineId > 0) enter.animateTo(1f, spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow))
+        if (lineId > 0) enter.snapTo(1f)               // 4.6d: the boot snaps off and home is already in place
     }
     LaunchedEffect(lineId) {
         if (lineId > 0) {
@@ -216,10 +216,11 @@ fun HomeScreen(
                 Spacer(Modifier.height(14.dp))
                 Clock(
                     resumeTick,
-                    Modifier.graphicsLayer {
-                        translationY = -70.dp.toPx() * (1f - enter.value)
-                        alpha = enter.value.coerceIn(0f, 1f)
-                    },
+                    Modifier
+                        .bootSlot(BootDock.CLOCK)                   // 4.6d: struck with the chatbox and apps
+                        .graphicsLayer {
+                            alpha = if (BootDock.active || BootDock.CLOCK in BootDock.struck) 1f else enter.value.coerceIn(0f, 1f)
+                        },
                 )
             }
 
@@ -229,7 +230,7 @@ fun HomeScreen(
                 speaking = speaking,
                 mood = mood,
                 moodId = lineId,
-                enter = { enter.value.coerceIn(0f, 1f) },
+                enter = { if (BootDock.active) 0f else enter.value.coerceIn(0f, 1f) },   // 4.6d: the boot draws her
                 pop = { pop.value },
                 onPoke = pokeOrListen,
                 modifier = Modifier
@@ -346,8 +347,8 @@ fun HomeScreen(
                     .graphicsLayer {
                         // struck in the boot: already in place; otherwise it slides in
                         val struck = BootDock.CHAT in BootDock.struck
-                        translationY = if (struck) 0f else 90.dp.toPx() * (1f - enter.value)
-                        alpha = if (struck) 1f else enter.value.coerceIn(0f, 1f)
+                        translationY = if (struck || BootDock.active) 0f else 90.dp.toPx() * (1f - enter.value)
+                        alpha = if (struck || BootDock.active) 1f else enter.value.coerceIn(0f, 1f)
                     },
             )
 
@@ -355,8 +356,10 @@ fun HomeScreen(
                 Spacer(Modifier.height(10.dp))
                 Box(
                     Modifier.graphicsLayer {
-                        translationY = 140.dp.toPx() * (1f - enter.value)
-                        alpha = enter.value.coerceIn(0f, 1f)
+                        // 4.6d: during the boot the dock frame appears when lightning hits its slots
+                        val struck = BootDock.struck.keys.any { it < BootDock.CHAT }
+                        translationY = if (struck || BootDock.active) 0f else 140.dp.toPx() * (1f - enter.value)
+                        alpha = if (BootDock.active) (if (struck) 1f else 0f) else if (struck) 1f else enter.value.coerceIn(0f, 1f)
                     }
                 ) {
                     Dock(dockApps, onLaunch, onToggleDock, onAppInfo, onEmptySlot = openDrawer)
@@ -656,7 +659,7 @@ private fun Dock(
     val shape = CutCornerShape(topStart = 12.dp, bottomEnd = 12.dp)
     LaunchedEffect(apps.size) {                         // forget slots that no longer exist
         val used = if (apps.isEmpty()) EMPTY_SLOTS else apps.size
-        BootDock.slots.keys.filter { it >= used && it != BootDock.CHAT }.forEach { BootDock.slots.remove(it) }
+        BootDock.slots.keys.filter { it >= used && it < BootDock.CHAT }.forEach { BootDock.slots.remove(it) }
     }
     Box(
         contentAlignment = Alignment.Center,
