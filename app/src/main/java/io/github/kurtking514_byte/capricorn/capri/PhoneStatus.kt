@@ -34,6 +34,11 @@ data class PhoneStatus(
     val location: Boolean,
     /** 3.9c: class now / next class from the saved timetable ([Timetable]). */
     val classes: Timetable.Status = Timetable.Status(false, null, null),
+    /** 3.9e: today's screen time, or null without Usage access. */
+    val screenTime: ScreenTime.Today? = null,
+    /** 3.9e: last fetched weather (may be old), and whether rough location is allowed. */
+    val weather: Weather.Info? = null,
+    val weatherAllowed: Boolean = false,
 ) {
     companion object {
         fun read(context: Context): PhoneStatus {
@@ -68,6 +73,9 @@ data class PhoneStatus(
                 dnd = filter != NotificationManager.INTERRUPTION_FILTER_ALL && filter != NotificationManager.INTERRUPTION_FILTER_UNKNOWN,
                 location = loc != null && LocationManagerCompat.isLocationEnabled(loc),
                 classes = Timetable.status(context),
+                screenTime = ScreenTime.today(context),
+                weather = Weather.cached(context),
+                weatherAllowed = Weather.allowed(context),
             )
         }
     }

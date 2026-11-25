@@ -23,8 +23,26 @@ class CapriBrain(private val context: Context) {
     var mood: String = "neutral"
         private set
 
-    /** 3.9d: true once if the last reply asked for the week grid; she then wears a smirk. */
-    fun consumeClasses(): Boolean = (mood == "classes").also { if (it) mood = "smirk" }
+    /**
+     * 3.9d/e: a job for MainActivity hidden in the last reply ("classes" = week grid, "askLocation" =
+     * ask for rough location, "fetchWeather" = fetch and report). Returned once; she then wears a smirk.
+     */
+    fun consumeRequest(): String? = mood.takeIf { it in setOf("classes", "askLocation", "fetchWeather") }?.also { mood = "smirk" }
+
+    /** 3.9e: what she says about the weather. */
+    fun weatherLine(w: Weather.Info): String {
+        val t = w.temp
+        return when {
+            w.code in 95..99 -> pick("$t° and storming. Stay in. With me.", "Thunder out there, $t°. My kind of weather.")
+            Weather.wet(w.code) -> pick("$t°, rain. Umbrella or suffer.", "Wet out there. $t°. Don't come back soggy.")
+            Weather.describe(w.code) == "SNOW" -> pick("$t° and snowing. Cute.", "Snow. $t°. Layers, genius.")
+            w.code == 0 -> pick("$t° and clear. Go be outside for once.", "Clear skies, $t°. No excuses.")
+            else -> pick("$t°, gray skies. Moody. Like me.", "$t° and cloudy. Thrilling.")
+        }.also { mood = "smirk" }
+    }
+
+    fun weatherFailed(): String = pick("Couldn't reach the sky. No signal, or no location fix.", "Weather's not answering. Try again outside.").also { mood = "shrug" }
+    fun weatherDenied(): String = pick("No location, no weather. Your loss.", "Fine, keep your secrets. And your rain.").also { mood = "shrug" }
 
     fun greeting(): String = (when (LocalTime.now().hour) {
         in 5..10 -> pick("Rise and shine. Or just rise. Baby steps.", "Morning, sleepyhead. What are we doing first?")
@@ -126,6 +144,10 @@ class CapriBrain(private val context: Context) {
             "Alarm in ${s.alarmInMin} minutes. Sleep fast.",
             "${s.alarmInMin} minutes till your alarm. Why are you awake?",
         ), "smirk")
+        s.weather != null && Weather.fresh(s.weather) && Weather.wet(s.weather.code) ->
+            done(pick("It's ${Weather.describe(s.weather.code).lowercase()} out there. Take an umbrella.", "Wet outside. Don't blame me."), "smirk")
+        s.screenTime != null && s.screenTime.totalMs >= 5 * 60 * 60_000L ->
+            done(pick("${s.screenTime.totalMs / 3_600_000L} hours of screen today. I'm flattered, but blink.", "${ScreenTime.span(s.screenTime.totalMs).lowercase()} on me today. Touch grass."), "smug")
         s.unread == null -> done("Can't count your notifs without access. Say \"notifs\".", "shrug")
         s.unread == 0 -> done(pick("Zero unread. Nobody misses you. Lucky me.", "Inbox clean. Suspicious."), "smirk")
         s.classes.hasClasses && s.classes.now == null && s.classes.next?.inMin == null ->
@@ -243,6 +265,25 @@ class CapriBrain(private val context: Context) {
         // show every pose once, 2 s each (handled by CapriSpriteFigure)
         if (t == "poses" || t == "pose" || t == "show poses") {
             return done(pick("Fine. Full catalogue. Don't blink.", "Runway mode. Try to keep up."), "showcase")
+        }
+
+        // 3.9e: screen time (Usage access)
+        if (t in setOf("usage", "screen time", "screentime", "usage access")) {
+            val st = ScreenTime.today(context)
+            if (st == null) {
+                start(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                return done("Find \"Capri\" and switch on usage access. I count minutes, not secrets.", "smirk")
+            }
+            val top = st.topApp?.let { " Mostly $it. Shameless." } ?: ""
+            return "${ScreenTime.span(st.totalMs).lowercase()} on screen today.$top".also { mood = "smug" }
+        }
+
+        // 3.9e: weather (rough location, Open-Meteo)
+        if (Regex("^(the )?(weather|forecast|temp|temperature)( now| today| outside)?$").matches(t)) {
+            if (!Weather.allowed(context)) return done("Let me see roughly where you are and I'll read the sky. Tap allow.", "askLocation")
+            val w = Weather.cached(context)
+            if (w != null && Weather.fresh(w)) return weatherLine(w)
+            return "Checking the sky. Hold on.".also { mood = "fetchWeather" }
         }
 
         // 3.9d: the week grid (opened by MainActivity.say)

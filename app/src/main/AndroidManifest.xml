@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Lets Capri set alarms and timers in the system clock app. -->
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <!-- 3.3: "Uninstall" from Capri's grab menu opens Android's own uninstall dialog -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- 3.9e: weather in the status scan (Open-Meteo, rough location only, asked via chat "weather") -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- 3.9e: screen time today (user turns on "Usage access" via chat "usage") -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
 
     <!-- Needed on Android 11+ to see the list of installed apps for the drawer. -->
     <queries>

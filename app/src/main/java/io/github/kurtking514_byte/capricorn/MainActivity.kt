@@ -42,6 +42,9 @@ import io.github.kurtking514_byte.capricorn.overlay.CapriOverlayService
 import io.github.kurtking514_byte.capricorn.ui.DRAWER_CLOSE_MS
 import io.github.kurtking514_byte.capricorn.ui.AppDrawer
 import io.github.kurtking514_byte.capricorn.ui.ClassGrid
+import io.github.kurtking514_byte.capricorn.capri.Weather
+import android.Manifest
+import androidx.activity.result.contract.ActivityResultContracts
 import io.github.kurtking514_byte.capricorn.ui.StatusScan
 import io.github.kurtking514_byte.capricorn.capri.PhoneStatus
 import io.github.kurtking514_byte.capricorn.capri.BatteryTracker
@@ -87,11 +90,25 @@ class MainActivity : ComponentActivity() {
             brain.consumeActed()
             return
         }
-        if (brain.consumeClasses()) classesOpen = true     // 3.9d: chat "classes" opens the week grid
+        when (brain.consumeRequest()) {
+            "classes" -> classesOpen = true                                                // 3.9d week grid
+            "askLocation" -> askLocation.launch(Manifest.permission.ACCESS_COARSE_LOCATION) // 3.9e
+            "fetchWeather" -> fetchWeather()
+        }
         capriLine = line
         mood = brain.mood
         lineId++
         if (brain.consumeActed()) commandId++     // C3 red hit
+    }
+
+    // 3.9e: rough location for the weather; on yes she fetches and says it.
+    private val askLocation = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        if (ok) fetchWeather() else say(brain.weatherDenied())
+    }
+
+    private fun fetchWeather() = Weather.refresh(this, force = true) { w ->
+        say(if (w != null) brain.weatherLine(w) else brain.weatherFailed())
+        if (w != null) StatusScan.update(PhoneStatus.read(this))
     }
 
     /** C5: a phone reaction. Only while home is on screen and the boot is done; returns true if she said it. */
@@ -212,6 +229,8 @@ class MainActivity : ComponentActivity() {
                         onTwoFingerHold = {
                             val st = PhoneStatus.read(this@MainActivity)
                             StatusScan.show(st)
+                            // 3.9e: stale weather -> fetch quietly; the panel updates if it's still up
+                            Weather.refresh(this@MainActivity) { if (it != null) StatusScan.update(PhoneStatus.read(this@MainActivity)) }
                             say(brain.scan(st))
                         },
                         onPickLetterApp = {
@@ -254,6 +273,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         resumeTick++
+        Weather.refresh(this)                     // 3.9e: keep the weather fresh (skips if not allowed / still fresh)
         CapriNotifListener.onNew = { pkg -> runOnUiThread { onNotification(pkg) } }
     }
 

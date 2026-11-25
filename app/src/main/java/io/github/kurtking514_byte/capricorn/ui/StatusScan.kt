@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kurtking514_byte.capricorn.capri.PhoneStatus
+import io.github.kurtking514_byte.capricorn.capri.ScreenTime
+import io.github.kurtking514_byte.capricorn.capri.Weather
 import io.github.kurtking514_byte.capricorn.capri.Timetable
 import io.github.kurtking514_byte.capricorn.ui.theme.CapriColors
 import kotlin.math.roundToInt
@@ -52,6 +54,9 @@ object StatusScan {
         status = s
         at = android.os.SystemClock.uptimeMillis()
     }
+
+    /** 3.9e: new numbers (fresh weather) for the panel already showing, without restarting it. */
+    fun update(s: PhoneStatus) { if (status != null) status = s }
 
     internal fun clear() { status = null }
 }
@@ -98,6 +103,17 @@ private fun rows(s: PhoneStatus): List<Row> = listOf(
         null -> Row("NOTIFS", "NO ACCESS", dim = true)
         0 -> Row("NOTIFS", "NONE")
         else -> Row("NOTIFS", "${s.unread} UNREAD")
+    },
+    // 3.9e
+    s.screenTime?.let { st ->
+        Row("SCREEN TIME", ScreenTime.span(st.totalMs), bad = st.totalMs >= 5 * 60 * 60_000L,
+            sub = st.topApp?.let { "MOST: ${short(it.uppercase())} ${ScreenTime.span(st.topMs)}" })
+    } ?: Row("SCREEN TIME", "NO ACCESS", dim = true, sub = "SAY \"USAGE\""),
+    when {
+        !s.weatherAllowed -> Row("WEATHER", "NO ACCESS", dim = true, sub = "SAY \"WEATHER\"")
+        s.weather == null -> Row("WEATHER", "LOADING…", dim = true)
+        else -> Row("WEATHER", "${s.weather.temp}° ${Weather.describe(s.weather.code)}",
+            dim = System.currentTimeMillis() - s.weather.at > 3 * 60 * 60_000L, sub = "UPDATED " + Weather.age(s.weather))
     },
 )
 
