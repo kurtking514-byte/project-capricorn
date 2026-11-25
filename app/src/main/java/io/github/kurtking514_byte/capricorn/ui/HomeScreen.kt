@@ -1,5 +1,7 @@
 package io.github.kurtking514_byte.capricorn.ui
 
+import io.github.kurtking514_byte.capricorn.capri.ContactNumber
+
 import android.text.format.DateFormat
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -106,6 +108,8 @@ fun HomeScreen(
     letterPick: Pair<Char, List<AppEntry>>?,       // 3.5: several apps start with the drawn letter
     onLetter: (Char?) -> Unit,
     onPickLetterApp: (AppEntry) -> Unit,
+    contactPick: List<ContactNumber>? = null,        // 3.13: "call alex" matched several numbers
+    onPickContact: (ContactNumber) -> Unit = {},
     onDoubleTapEmpty: () -> Unit,                   // 3.6: lock
     onTwoFingerDown: () -> Unit,                    // 3.7: flashlight
     onTwoFingerHold: () -> Unit,                    // 3.9a: status scan
@@ -240,6 +244,29 @@ fun HomeScreen(
                             modifier = Modifier.weight(1f),
                             draggable = true,
                         )
+                    }
+                }
+            } else if (contactPick != null) {
+                // 3.13: "Call who?": up to 4 matching numbers; tap one = dialer with it typed in
+                Text(
+                    "CALL WHO?", color = CapriColors.Acid,
+                    style = MaterialTheme.typography.labelSmall, letterSpacing = 1.5.sp,
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp, start = 4.dp),
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                ) {
+                    contactPick.forEach { c ->
+                        Column(
+                            Modifier.weight(1f).background(androidx.compose.ui.graphics.Color.Black)
+                                .border(1.5.dp, GLITCH_CRIMSON).clickable { onPickContact(c) }
+                                .padding(horizontal = 6.dp, vertical = 8.dp),
+                        ) {
+                            Text(c.name, color = CapriColors.Text, fontSize = 13.sp, fontFamily = FAN_FONT, maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                            Text(c.type, color = CapriColors.Dim, fontSize = 10.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, maxLines = 1)
+                        }
                     }
                 }
             } else if (letterPick != null) {

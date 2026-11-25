@@ -48,6 +48,7 @@ import io.github.kurtking514_byte.capricorn.data.Gesture
 import io.github.kurtking514_byte.capricorn.data.Gestures
 import io.github.kurtking514_byte.capricorn.capri.Weather
 import io.github.kurtking514_byte.capricorn.capri.FaceDown
+import io.github.kurtking514_byte.capricorn.capri.ContactNumber
 import android.Manifest
 import androidx.activity.result.contract.ActivityResultContracts
 import io.github.kurtking514_byte.capricorn.ui.StatusScan
@@ -88,6 +89,7 @@ class MainActivity : ComponentActivity() {
 
     private var mood by mutableStateOf("neutral")
     private var letterPick by mutableStateOf<Pair<Char, List<AppEntry>>?>(null)   // 3.5
+    private var contactPick by mutableStateOf<List<ContactNumber>?>(null)          // 3.13
     private var skin: CapriSkin? = null
 
     private fun say(line: String) {
@@ -97,6 +99,12 @@ class MainActivity : ComponentActivity() {
             return
         }
         when (brain.consumeRequest()) {
+            "askContacts" -> askContacts.launch(Manifest.permission.READ_CONTACTS)         // 3.13
+            "pickContact" -> {
+                val shown = brain.contactChoices
+                contactPick = shown
+                window.decorView.postDelayed({ if (contactPick === shown) contactPick = null }, 8_000)
+            }
             "gestures" -> gesturesOpen = true                                              // 3.12
             "classes" -> classesOpen = true                                                // 3.9d week grid
             "askLocation" -> askLocation.launch(Manifest.permission.ACCESS_COARSE_LOCATION) // 3.9e
@@ -111,6 +119,12 @@ class MainActivity : ComponentActivity() {
     // 3.9e: rough location for the weather; on yes she fetches and says it.
     private val askLocation = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         if (ok) fetchWeather() else say(brain.weatherDenied())
+    }
+
+    // 3.13: Contacts access for "call <name>"; on yes she looks the name up again.
+    private val askContacts = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        val name = brain.pendingCall
+        say(if (ok && name != null) brain.call(name) else brain.contactsDenied())
     }
 
     private fun fetchWeather() = Weather.refresh(this, force = true) { w ->
@@ -259,6 +273,11 @@ class MainActivity : ComponentActivity() {
                         onDoubleTapEmpty = { runGesture(Gesture.DOUBLE_TAP) },
                         onTwoFingerDown = { runGesture(Gesture.TWO_DOWN) },
                         onTwoFingerHold = { runGesture(Gesture.TWO_HOLD) },
+                        contactPick = contactPick,
+                        onPickContact = {
+                            contactPick = null
+                            say(brain.contactPicked(it))
+                        },
                         onPickLetterApp = {
                             letterPick = null
                             say(brain.letterPicked(it.label))

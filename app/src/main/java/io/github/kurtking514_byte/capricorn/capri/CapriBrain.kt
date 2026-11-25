@@ -30,7 +30,7 @@ class CapriBrain(private val context: Context) {
      * 3.9d/e, 3.12: a job for MainActivity hidden in the last reply ("gestures" = settings screen) ("classes" = week grid, "askLocation" =
      * ask for rough location, "fetchWeather" = fetch and report). Returned once; she then wears a smirk.
      */
-    fun consumeRequest(): String? = mood.takeIf { it in setOf("classes", "askLocation", "fetchWeather", "gestures") }?.also { mood = "smirk" }
+    fun consumeRequest(): String? = mood.takeIf { it in setOf("classes", "askLocation", "fetchWeather", "gestures", "askContacts", "pickContact") }?.also { mood = "smirk" }
 
     /** 3.9e: what she says about the weather. */
     fun weatherLine(w: Weather.Info): String {
@@ -55,6 +55,37 @@ class CapriBrain(private val context: Context) {
             "Rebooted. Sound's on, try not to miss anything.",
         )
     ).also { mood = "smirk" }
+
+    // 3.13: calling. "call mom" -> dialer with the number typed in; several matches -> pick row.
+    /** The name to look up again once Contacts access is allowed. */
+    var pendingCall: String? = null
+        private set
+    /** Up to 4 matches for the pick row (MainActivity reads it on "pickContact"). */
+    var contactChoices: List<ContactNumber> = emptyList()
+        private set
+
+    fun call(name: String): String {
+        if (!Contacts.allowed(context)) {
+            pendingCall = name
+            return done("Let me peek at your contacts first. Tap allow. I only look up names.", "askContacts")
+        }
+        pendingCall = null
+        val found = Contacts.find(context, name)
+        return when {
+            found.isEmpty() -> pick("No \"$name\" in your contacts. Imaginary friend?", "Nobody called $name. Try their saved name.").also { mood = "shrug" }
+            found.size == 1 -> contactPicked(found[0])
+            else -> {
+                contactChoices = found.take(4)
+                pick("${found.size} matches for $name. Pick one.", "Which $name? Choose.").also { mood = "pickContact" }
+            }
+        }
+    }
+
+    fun contactPicked(c: ContactNumber): String =
+        if (Contacts.dial(context, c)) done(pick("${c.name}. Number's in, you press call.", "Dialing ${c.name}. Your thumb does the rest."), "smirk")
+        else "No phone app to dial with. Tragic.".also { mood = "shrug" }
+
+    fun contactsDenied(): String = pick("No contacts, no calls. Dial it yourself then.", "Fine. Keep your friends secret.").also { mood = "shrug" }
 
     fun weatherFailed(): String = pick("Couldn't reach the sky. No signal, or no location fix.", "Weather's not answering. Try again outside.").also { mood = "shrug" }
     fun weatherDenied(): String = pick("No location, no weather. Your loss.", "Fine, keep your secrets. And your rain.").also { mood = "shrug" }
@@ -282,6 +313,66 @@ class CapriBrain(private val context: Context) {
             return done(pick("Fine. Full catalogue. Don't blink.", "Runway mode. Try to keep up."), "showcase")
         }
 
+        // 3.13: call a contact (dialer only)
+        Regex("^(?:call|phone|dial|ring)\\s+(.+)$").find(t)?.let { m -> return call(m.groupValues[1].trim()) }
+
+        // 3.13: music (media keys go to whatever is playing)
+        Regex("^(pause|stop|play|resume|next|skip|previous|prev)(?: (?:the )?(?:music|song|track|it))?$").find(t)?.let { m ->
+            val audio = context.getSystemService(android.media.AudioManager::class.java) ?: return "No audio here. Weird phone."
+            val word = m.groupValues[1]
+            if ((word == "pause" || word == "stop") && !audio.isMusicActive) return "Nothing's playing. Pausing silence? Bold.".also { mood = "shrug" }
+            val key = when (word) {
+                "pause", "stop" -> android.view.KeyEvent.KEYCODE_MEDIA_PAUSE
+                "play", "resume" -> android.view.KeyEvent.KEYCODE_MEDIA_PLAY
+                "next", "skip" -> android.view.KeyEvent.KEYCODE_MEDIA_NEXT
+                else -> android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS
+            }
+            audio.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, key))
+            audio.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, key))
+            return done(when (key) {
+                android.view.KeyEvent.KEYCODE_MEDIA_PAUSE -> pick("Paused. Savor the quiet.", "Music's on hold. You're welcome.")
+                android.view.KeyEvent.KEYCODE_MEDIA_PLAY -> pick("Hit play. Vibe responsibly.", "Music's back.")
+                android.view.KeyEvent.KEYCODE_MEDIA_NEXT -> pick("Skipped. Bad taste, fixed.", "Next. That one was mid.")
+                else -> pick("Running it back.", "Again? Fine, rewinding.")
+            }, "smirk")
+        }
+
+        // 3.13: Wi-Fi / Bluetooth / data. Android won't let apps flip them, so she opens the panel.
+        Regex("^(wifi|wi-fi|wi fi|bluetooth|bt|internet|mobile data|data)(?: on| off| settings)?$").find(t)?.let { m ->
+            val (intent, line) = when (m.groupValues[1]) {
+                "bluetooth", "bt" -> Intent(Settings.ACTION_BLUETOOTH_SETTINGS) to "Bluetooth. Android makes you flip it yourself."
+                "internet", "mobile data", "data" ->
+                    (if (android.os.Build.VERSION.SDK_INT >= 29) Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY) else Intent(Settings.ACTION_WIRELESS_SETTINGS)) to
+                        "Connections, right there. Tap away."
+                else -> (if (android.os.Build.VERSION.SDK_INT >= 29) Intent(Settings.Panel.ACTION_WIFI) else Intent(Settings.ACTION_WIFI_SETTINGS)) to
+                    "Wi-Fi panel's up. Android won't let me flip it, so that's on you."
+            }
+            if (!start(intent)) return "Can't open that here. Blame the phone.".also { mood = "shrug" }
+            return done(line, "smirk")
+        }
+
+        // 3.13: ringer: silent / vibrate / sound on
+        Regex("^(silent|silence|mute|vibrate|vibration|sound on|sound|unmute|ring|ringer on|loud|normal)(?: mode)?$").find(t)?.let { m ->
+            val audio = context.getSystemService(android.media.AudioManager::class.java) ?: return "No audio here. Weird phone."
+            val w = m.groupValues[1]
+            val want = when (w) {
+                "silent", "silence", "mute" -> android.media.AudioManager.RINGER_MODE_SILENT
+                "vibrate", "vibration" -> android.media.AudioManager.RINGER_MODE_VIBRATE
+                else -> android.media.AudioManager.RINGER_MODE_NORMAL
+            }
+            val full = FaceDown.fullSilentAllowed(context)
+            val target = if (want == android.media.AudioManager.RINGER_MODE_SILENT && !full) android.media.AudioManager.RINGER_MODE_VIBRATE else want
+            try { audio.ringerMode = target } catch (e: SecurityException) {
+                return "Android blocked that. Say \"quiet\" and let me handle Do Not Disturb.".also { mood = "shrug" }
+            }
+            return done(when {
+                want != target -> "Only vibrate without Do Not Disturb access. Say \"quiet\" to fix that."
+                target == android.media.AudioManager.RINGER_MODE_SILENT -> pick("Silent. Not a peep.", "Muted. Peace at last.")
+                target == android.media.AudioManager.RINGER_MODE_VIBRATE -> pick("Buzz mode.", "Vibrate. Subtle. Unlike you.")
+                else -> pick("Sound's back on.", "Loud and proud again.")
+            }, "smirk")
+        }
+
         // 3.10: Do Not Disturb access, so face down can mean full silent
         if (t in setOf("quiet", "dnd", "do not disturb", "silent access")) {
             if (FaceDown.fullSilentAllowed(context)) return done("Already got it. Flip me over and I go dark.", "sass")
@@ -419,7 +510,7 @@ class CapriBrain(private val context: Context) {
             return done(pick("I know, I'm the best.", "You owe me one. I'm keeping count."), "sass")
         }
         if (Regex("\\b(help|what can you do)\\b").containsMatchIn(t)) {
-            return done("Say an app's name and I open it. Also: alarm 7:30, timer 10 min, photo, flashlight, screenshot, lock, apps, notifs, unhide. Drag an app onto me and I'll handle it. Say \"overlay\" and I follow you into other apps.", "neutral")
+            return done("Say an app's name and I open it. Also: alarm 7:30, timer 10 min, photo, flashlight, screenshot, lock, apps, notifs, unhide, call mom, pause / next, wifi, bluetooth, silent / vibrate / sound on, classes, weather, gestures. Drag an app onto me and I'll handle it. Say \"overlay\" and I follow you into other apps.", "neutral")
         }
 
         // apps

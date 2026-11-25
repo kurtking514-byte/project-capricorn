@@ -136,7 +136,7 @@ Moving the phone:
 - [ ] ~~3.11 Shake = heavy glitch bars, she undoes her last action~~ dropped by the user (2026-11-25): no shake-to-undo
 Then:
 - [x] 3.12 (2026-11-25, builds; not seen on phone; `data/Gestures.kt`, `ui/GestureScreen.kt`; user skipped the preview) Gesture settings screen, opened by chat `gestures` / `settings`: ON/OFF for all 10 gestures (on her: double-tap, hold, drag app, swipe; empty screen: letter, swipe up, double-tap, two down, two-finger hold; phone: face down). The 3 empty-screen triggers can be remapped to lock / flashlight / status scan / app list / week grid (`MainActivity.runGesture`). Saved in prefs "gestures", all on by default. Swiping her back in always works even if the swipe is off; face down off still restores sound if it was muted
-- [ ] 3.13 Chat commands: call contact, wifi/bluetooth settings, music pause/next, silent mode
+- [x] 3.13 (2026-11-25, builds; not seen on phone; `capri/Contacts.kt` + commands in `CapriBrain.understand`) Chat commands: `call|phone|dial|ring <name>` (READ_CONTACTS asked once; opens the DIALER with the number typed in, never calls by itself; several matches = "CALL WHO?" pick row above the chatbox, 4 max, hides after 8 s), music `pause/stop/play/resume/next/skip/previous` (+ music/song/track; media keys), `wifi` / `data` / `internet` (Android quick panel) and `bluetooth` (settings page): apps can't flip them, `silent/mute`, `vibrate`, `sound on/unmute/normal` (silent falls back to vibrate without DND access, chat `quiet`). Help line lists them
 - [ ] 3.14 Live search in chatbox also shows contacts and settings
 
 ### Phase 4 — Her world
