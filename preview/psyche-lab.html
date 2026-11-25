@@ -1,0 +1,314 @@
+<title>Capri Psyche Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;800&family=JetBrains+Mono:wght@400;600&family=Russo+One&display=swap">
+<style>
+  /* Same single dark look as the other labs. */
+  :root {
+    color-scheme: dark;
+    --ink: #080E15; --panel: #0C1A22; --crimson: #FF3C68; --cyan: #8EF5ED; --acid: #F4ED75;
+    --text: #E6F4F4; --dim: #7E949C; --line: #1B2E38;
+    --accent: #8EF5ED;
+    --display: "Exo 2", "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+    --russo: "Russo One", "Exo 2", system-ui, sans-serif;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--ink); color: var(--text); font-family: var(--display);
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 28px; box-sizing: border-box;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+  @media (max-width: 760px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+  header { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font-weight: 800; font-size: 20px; letter-spacing: .02em; text-transform: uppercase; }
+  h1 span { color: var(--crimson); }
+  .step { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--acid); }
+  .phone {
+    position: relative; width: 100%; aspect-ratio: 9 / 19.5; background: var(--ink); border: 2px solid var(--line);
+    clip-path: polygon(0 14px, 14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px));
+    overflow: hidden; user-select: none; -webkit-user-select: none;
+  }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .clock { position: absolute; left: 0; right: 0; top: 3.2%; text-align: center; z-index: 2; }
+  .clock .t { font: 400 44px/1 var(--russo); letter-spacing: .02em; color: var(--accent); }
+  .clock .d { font: 600 10px/1 var(--mono); letter-spacing: .16em; color: var(--dim); margin-top: 6px; text-transform: uppercase; }
+  .tag { display: inline-block; margin-top: 8px; font: 600 10px/1 var(--mono); letter-spacing: .18em; color: var(--accent);
+         border: 1px solid var(--accent); padding: 4px 7px; }
+  .tag.prot { color: var(--crimson); border-color: var(--crimson); }
+  .bubble {
+    position: absolute; left: 50%; top: 22%; transform: translateX(-50%); width: max-content; max-width: 80%; z-index: 2;
+    background: var(--panel); border: 1.5px solid var(--accent); padding: 8px 12px;
+    font: 600 13px/1.35 var(--display); text-align: center;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+  .bubble b { display: block; font: 600 9px/1 var(--mono); letter-spacing: .14em; color: var(--crimson); margin-bottom: 4px; }
+  .chat {
+    position: absolute; left: 5%; right: 5%; top: 84%; height: 5.2%; z-index: 1; display: flex; align-items: center; padding: 0 12px;
+    border: 1px solid var(--cyan); background: var(--panel); color: var(--dim); font-size: 13px;
+    clip-path: polygon(0 10px, 10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+  }
+  .side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row-label { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); width: 100%; }
+  button {
+    font: 600 13px/1 var(--display); letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text); background: var(--panel); border: 1px solid var(--line); padding: 11px 14px; cursor: pointer;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  button[aria-pressed="true"] { border-color: var(--cyan); color: var(--cyan); }
+  button.on { background: var(--crimson); color: var(--ink); border-color: var(--crimson); }
+  button:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
+  .sliders { display: grid; gap: 10px; }
+  .sliders label { display: grid; grid-template-columns: 110px minmax(0, 1fr) 64px; gap: 10px; align-items: center; font: 12px var(--mono); color: var(--dim); }
+  .sliders output { color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: #FF3C68; }
+  .readout { background: var(--panel); border: 1px solid var(--line); padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .readout h2 { margin: 0; font: 600 12px/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--acid); }
+  ul { margin: 0; padding-left: 18px; font-family: var(--mono); font-size: 12px; line-height: 1.55; }
+  li::marker { color: var(--dim); }
+  .note { font-size: 13px; color: var(--dim); line-height: 1.5; margin: 0; }
+  .note b { color: var(--text); font-weight: 600; }
+  [hidden] { display: none !important; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Capri <span>psyche</span></h1>
+    <div class="step">Step 4.1 · how you can tell which mind is in charge</div>
+  </header>
+
+  <div class="phone" id="phone">
+    <canvas id="c"></canvas>
+    <div class="clock"><div class="t" id="clk">8:40</div><div class="d" id="date">WED 25 NOV</div><div class="tag" id="tag">PSYCHE · CALM</div></div>
+    <div class="bubble" id="bubble"><b>CAPRI</b><span id="line"></span></div>
+    <div class="chat">Talk to Capri…</div>
+  </div>
+
+  <div class="side">
+    <div class="row">
+      <div class="row-label">Psyche (Auto follows the sliders below)</div>
+      <button data-p="AUTO" aria-pressed="true">Auto</button>
+      <button data-p="CALM" aria-pressed="false">Calm</button>
+      <button data-p="NORMAL" aria-pressed="false">Normal</button>
+      <button data-p="CHAOTIC" aria-pressed="false">Chaotic</button>
+      <button data-p="PROTECTIVE" aria-pressed="false">Protective</button>
+    </div>
+
+    <div class="sliders" id="sliders">
+      <label>Time <input type="range" id="hour" min="0" max="23.75" step="0.25" value="8.67"><output id="hourV"></output></label>
+      <label>Battery <input type="range" id="bat" min="1" max="100" value="64"><output id="batV"></output></label>
+      <label>Screen today <input type="range" id="scr" min="0" max="8" step="0.25" value="2"><output id="scrV"></output></label>
+    </div>
+
+    <div class="row" id="tells">
+      <div class="row-label">How you can tell (turn each on/off)</div>
+      <button data-t="poses" class="on">Favorite poses</button>
+      <button data-t="tag" class="on">Tag under clock</button>
+      <button data-t="rhythm" class="on">Idle rhythm</button>
+      <button data-t="accent" class="on">Accent color</button>
+    </div>
+
+    <div class="readout">
+      <h2 id="rtitle">Calm</h2>
+      <ul id="rlist"></ul>
+    </div>
+    <p class="note"><b>Auto:</b> PROTECTIVE takes over whenever battery is 15% or lower or screen time is 5 h or more. Otherwise CALM 5:00–10:59, NORMAL 11:00–23:59, CHAOTIC 0:00–4:59.
+      The lines in her bubble are only samples of the tone (her real lines are step 4.2), and the switch glitch is step 4.3.
+      The figure is an original stand-in; in the app she uses her real allowed standing poses.</p>
+  </div>
+</div>
+
+<script>
+  const GREEN = "#00B144", CRIMSON = "#BC002B", BLACK = "#0E0A16", IRIS = "#0040A0", PUPIL = "#B3B3B3", PINK = "#FF3C68";
+  const PSY = {
+    CALM:       { accent: "#00B144", poses: ["neutral", "neutral", "lookL", "lookR"],                 hold: [6000, 9000], glance: 0,
+                  lines: ["Morning. Let's be efficient about this.", "Coffee first, then world domination.", "Quiet start. I like it."],
+                  says: "Efficient, brisk, a bit softer" },
+    NORMAL:     { accent: "#8EF5ED", poses: ["neutral", "smirk", "hip", "shrug", "lookL", "lookR", "crossed"], hold: [3000, 6000], glance: 0,
+                  lines: ["Bored already? Give me something to do.", "Yes, yes, I'm adorable.", "Type something. I dare you."],
+                  says: "Her usual cocky self" },
+    CHAOTIC:    { accent: "#8A5CFF", poses: ["smirk", "shrug", "lookL", "lookR", "hip", "smirk"],        hold: [900, 2200], glance: .45,
+                  lines: ["It's 3 a.m. Let's reorganize your entire life.", "Sleep is for people without me.", "Who needs a bedtime? Not us."],
+                  says: "Sarcastic, restless, twitchy" },
+    PROTECTIVE: { accent: "#FF3C68", poses: ["crossed", "hip"],                                       hold: [99999, 99999], glance: 0,
+                  lines: ["Put me down. You've had enough screen today.", "15%. Charger. Now. I'm not asking.", "Eyes off the screen. That's an order."],
+                  says: "Bossy, worried, stares you down" },
+  };
+  const ALL = PSY.NORMAL.poses;
+
+  const phone = document.getElementById("phone"), cv = document.getElementById("c"), ctx = cv.getContext("2d");
+  const $ = id => document.getElementById(id);
+  const tells = { poses: true, tag: true, rhythm: true, accent: true };
+  let choice = "AUTO";
+
+  // ---------- stand-in figure (same original shapes as the Grab Lab), safe standing poses only ----------
+  let W = 0, H = 0, D = 1;
+  const geo = () => { const u = H * .32, top = H * .50; return { u, top, cx: W / 2 }; };
+  function drawFigure(g, pose, mono) {
+    const { u, top, cx } = geo(), f = c => mono || c;
+    const look = pose === "lookL" ? -1 : pose === "lookR" ? 1 : 0;
+    const hx = cx, hy = top + u * .05;
+    for (let i = 0; i < 13; i++) {
+      let a = -Math.PI * (.08 + .84 * i / 12), len = u * (.26 + .2 * Math.abs(Math.sin(i * 1.7))), w = u * .07;
+      if (i === 0 || i === 12) { a += i === 0 ? .55 : -.55; len *= 1.25; }
+      const nx = -Math.sin(a), ny = Math.cos(a);
+      g.beginPath(); g.moveTo(hx + nx * w / 2, hy + ny * w / 2);
+      g.lineTo(hx + Math.cos(a) * len, hy + Math.sin(a) * len);
+      g.lineTo(hx + Math.cos(a) * len * .55 - nx * w * .9, hy + Math.sin(a) * len * .55 - ny * w * .9);
+      g.lineTo(hx - nx * w / 2, hy - ny * w / 2); g.closePath();
+      g.fillStyle = f(i % 4 === 2 ? BLACK : CRIMSON); g.fill();
+    }
+    g.beginPath();
+    g.moveTo(cx - u * .012, top + u * .12); g.lineTo(cx + u * .012, top + u * .12);
+    g.lineTo(cx + u * .085, top + u * .17); g.lineTo(cx + u * .05, top + u * .42); g.lineTo(cx + u * .07, top + u * .5);
+    g.lineTo(cx + u * .045, top + u * .98); g.lineTo(cx + u * .014, top + u * .98); g.lineTo(cx, top + u * .56);
+    g.lineTo(cx - u * .014, top + u * .98); g.lineTo(cx - u * .045, top + u * .98);
+    g.lineTo(cx - u * .07, top + u * .5); g.lineTo(cx - u * .05, top + u * .42); g.lineTo(cx - u * .085, top + u * .17);
+    g.closePath(); g.fillStyle = f(BLACK); g.fill();
+    g.fillStyle = f(CRIMSON);
+    g.beginPath(); g.moveTo(cx - u * .075, top + u * .21); g.lineTo(cx + u * .075, top + u * .21); g.lineTo(cx + u * .06, top + u * .26); g.lineTo(cx - u * .06, top + u * .26); g.fill();
+    g.beginPath(); g.moveTo(cx - u * .066, top + u * .47); g.lineTo(cx + u * .066, top + u * .47); g.lineTo(cx, top + u * .56); g.fill();
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx + s * u * .04, top + u * .72); g.lineTo(cx + s * u * .02, top + u * .74); g.lineTo(cx + s * u * .022, top + u * .9); g.lineTo(cx + s * u * .04, top + u * .86); g.fill(); }
+    // arms
+    g.strokeStyle = f(BLACK); g.lineWidth = u * .024; g.lineJoin = "miter"; g.lineCap = "butt";
+    const P = (dx, dy) => [cx + dx * u, top + dy * u];
+    const arm = (...pts) => { g.beginPath(); g.moveTo(...P(...pts[0])); for (const p of pts.slice(1)) g.lineTo(...P(...p)); g.stroke(); };
+    for (const s of [-1, 1]) {
+      const sh = [s * .08, .18];
+      if (pose === "crossed") arm(sh, [s * .125, .31], [-s * .055, .29]);
+      else if (pose === "shrug") arm(sh, [s * .16, .3], [s * .21, .23]);
+      else if (pose === "hip" && s < 0) arm(sh, [s * .19, .35], [s * .072, .47]);
+      else arm(sh, [s * .105, .56]);
+    }
+    // head + face panel (looks left/right by sliding the panel)
+    const px = cx + look * u * .022;
+    g.beginPath(); g.ellipse(cx, top + u * .065, u * .05, u * .06, 0, 0, Math.PI * 2); g.fillStyle = f(BLACK); g.fill();
+    g.beginPath(); g.moveTo(px - u * .065, top + u * .035); g.lineTo(px + u * .065, top + u * .035);
+    g.lineTo(px + u * .05, top + u * .08); g.lineTo(px - u * .05, top + u * .08); g.closePath();
+    g.fillStyle = f(GREEN); g.fill();
+    if (!mono) {
+      for (const s of [-1, 1]) {
+        const ex = px + s * u * .028 + look * u * .006, ey = top + u * .057;
+        g.beginPath(); g.ellipse(ex, ey, u * .02, u * .011, 0, 0, Math.PI * 2); g.fillStyle = "#00030D"; g.fill();
+        g.beginPath(); g.arc(ex, ey, u * .0075, 0, Math.PI * 2); g.fillStyle = IRIS; g.fill();
+        g.beginPath(); g.arc(ex, ey, u * .0037, 0, Math.PI * 2); g.fillStyle = PUPIL; g.fill();
+      }
+      if (pose === "smirk" || pose === "hip") {            // a one-sided smirk mark under the panel
+        g.strokeStyle = "#00030D"; g.lineWidth = u * .006;
+        g.beginPath(); g.moveTo(px - u * .006, top + u * .097); g.lineTo(px + u * .02, top + u * .093); g.lineTo(px + u * .026, top + u * .087); g.stroke();
+      }
+    }
+  }
+  const cache = {};
+  function fig(pose, mono) {
+    const k = pose + (mono || "");
+    if (cache[k]) return cache[k];
+    const c = document.createElement("canvas"); c.width = cv.width; c.height = cv.height;
+    const g = c.getContext("2d"); g.setTransform(D, 0, 0, D, 0, 0); drawFigure(g, pose, mono);
+    return cache[k] = c;
+  }
+  function resize() {
+    const r = phone.getBoundingClientRect(); D = Math.min(devicePixelRatio || 1, 2); W = r.width; H = r.height;
+    cv.width = Math.round(W * D); cv.height = Math.round(H * D); ctx.setTransform(D, 0, 0, D, 0, 0);
+    for (const k in cache) delete cache[k];
+  }
+
+  // ---------- pose changes use the app's strips glitch (150 ms) ----------
+  const rng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  let pose = "neutral", from = "neutral", changedAt = -1e9, seed = 1, nextAt = 0, glanceBack = null;
+  function setPose(p) { if (p === pose) return; from = pose; pose = p; changedAt = performance.now(); seed++; }
+  function drawStrips(p) {
+    const r = rng(seed * 7 + (p < .5 ? 0 : 997)), split = (6 + 4 * (r() * 2 - 1)) * (r() < .5 ? 1 : -1);
+    let y = 0;
+    while (y < H) {
+      const sh = H * (.012 + .045 * r()), jump = r() * 2 - 1, dx = Math.abs(jump) > .45 ? jump * W * .14 : 0;
+      const ps = r() < p ? pose : from, crimsonOnly = r() > .775, gone = r() > .9;
+      if (!gone) {
+        ctx.drawImage(fig(ps, PINK), 0, y * D, cv.width, sh * D, dx + split, y, W, sh);
+        if (!crimsonOnly) ctx.drawImage(fig(ps, null), 0, y * D, cv.width, sh * D, dx, y, W, sh);
+      }
+      y += sh;
+    }
+  }
+
+  // ---------- which psyche, and what it shows ----------
+  const hourEl = $("hour"), batEl = $("bat"), scrEl = $("scr");
+  function autoPsyche() {
+    if (+batEl.value <= 15 || +scrEl.value >= 5) return "PROTECTIVE";
+    const h = +hourEl.value;
+    return h >= 5 && h < 11 ? "CALM" : h < 5 ? "CHAOTIC" : "NORMAL";
+  }
+  let current = null, lineIdx = 0;
+  function apply(force) {
+    const p = choice === "AUTO" ? autoPsyche() : choice;
+    const ps = PSY[p];
+    document.documentElement.style.setProperty("--accent", tells.accent ? ps.accent : "#8EF5ED");
+    const tag = $("tag");
+    tag.hidden = !tells.tag; tag.textContent = "PSYCHE · " + p; tag.classList.toggle("prot", p === "PROTECTIVE");
+    $("rtitle").textContent = p.charAt(0) + p.slice(1).toLowerCase();
+    const set = tells.poses ? ps.poses : ALL;
+    const hold = tells.rhythm ? ps.hold : PSY.NORMAL.hold;
+    $("rlist").innerHTML = [
+      "Tone: " + ps.says,
+      tells.poses ? "Poses: " + [...new Set(ps.poses)].map(n => ({ neutral: "neutral", smirk: "smirk", hip: "hand on hip", shrug: "shrug", lookL: "look left", lookR: "look right", crossed: "arms crossed" })[n]).join(", ") : "Poses: all 7 (favorite poses off)",
+      tells.rhythm ? (hold[0] > 90000 ? "Rhythm: holds one pose and stares, no switching" : `Rhythm: switches every ${(hold[0] / 1000).toFixed(1)}–${(hold[1] / 1000).toFixed(1)} s` + (ps.glance ? ", quick glances" : "")) : "Rhythm: normal 3–6 s (idle rhythm off)",
+      "Accent: " + (tells.accent ? ps.accent : "unchanged"),
+    ].map(t => `<li>${t}</li>`).join("");
+    if (p !== current || force) {
+      current = p;
+      lineIdx = 0; $("line").textContent = ps.lines[0];
+      const first = set[0]; setPose(first); nextAt = performance.now() + 600;
+    }
+  }
+  function fmtHour(h) { const H = Math.floor(h), m = Math.round((h - H) * 60); return `${H}:${String(m).padStart(2, "0")}`; }
+  function sliders() {
+    $("hourV").textContent = fmtHour(+hourEl.value); $("batV").textContent = batEl.value + "%"; $("scrV").textContent = (+scrEl.value).toFixed(2).replace(/\.?0+$/, "") + " h";
+    $("clk").textContent = fmtHour(+hourEl.value);
+    apply(false);
+  }
+  for (const el of [hourEl, batEl, scrEl]) el.addEventListener("input", sliders);
+  document.querySelectorAll("[data-p]").forEach(b => b.addEventListener("click", () => {
+    choice = b.dataset.p;
+    document.querySelectorAll("[data-p]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    apply(false);
+  }));
+  document.querySelectorAll("[data-t]").forEach(b => b.addEventListener("click", () => {
+    tells[b.dataset.t] = !tells[b.dataset.t]; b.classList.toggle("on", tells[b.dataset.t]); apply(true);
+  }));
+
+  // ---------- idle loop ----------
+  function tick(now) {
+    const ps = PSY[current];
+    const set = tells.poses ? ps.poses : ALL;
+    const hold = tells.rhythm ? ps.hold : PSY.NORMAL.hold;
+    if (glanceBack && now >= glanceBack.at) { setPose(glanceBack.pose); glanceBack = null; }
+    if (now >= nextAt && hold[0] < 90000) {
+      const opts = set.filter(p => p !== pose);
+      const next = opts.length ? opts[Math.floor(Math.random() * opts.length)] : pose;
+      setPose(next);
+      // chaotic: sometimes a quick 250 ms glance away and back
+      if (tells.rhythm && ps.glance && Math.random() < ps.glance && next !== "lookL" && next !== "lookR") {
+        later = now + 400 + Math.random() * 400;
+        glanceAt = later;
+      }
+      nextAt = now + hold[0] + Math.random() * (hold[1] - hold[0]);
+      if (Math.random() < .5) { lineIdx = (lineIdx + 1) % ps.lines.length; $("line").textContent = ps.lines[lineIdx]; }
+    }
+    if (glanceAt && now >= glanceAt) {
+      const back = pose; setPose(Math.random() < .5 ? "lookL" : "lookR"); glanceBack = { at: now + 250, pose: back }; glanceAt = 0;
+    }
+    ctx.clearRect(0, 0, W, H);
+    const k = now - changedAt;
+    if (k < 150) drawStrips(k / 150); else ctx.drawImage(fig(pose, null), 0, 0, W, H);
+    requestAnimationFrame(tick);
+  }
+  let later = 0, glanceAt = 0;
+
+  new ResizeObserver(resize).observe(phone);
+  resize(); sliders(); apply(true);
+  requestAnimationFrame(tick);
+</script>
