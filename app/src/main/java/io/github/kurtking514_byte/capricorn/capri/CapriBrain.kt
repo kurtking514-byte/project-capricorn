@@ -1,5 +1,8 @@
 package io.github.kurtking514_byte.capricorn.capri
 
+import io.github.kurtking514_byte.capricorn.ui.Psyche
+import io.github.kurtking514_byte.capricorn.ui.PsycheKind
+
 import io.github.kurtking514_byte.capricorn.data.Gesture
 import io.github.kurtking514_byte.capricorn.data.Gestures
 
@@ -94,12 +97,22 @@ class CapriBrain(private val context: Context) {
     fun weatherFailed(): String = pick("Couldn't reach the sky. No signal, or no location fix.", "Weather's not answering. Try again outside.").also { mood = "shrug" }
     fun weatherDenied(): String = pick("No location, no weather. Your loss.", "Fine, keep your secrets. And your rain.").also { mood = "shrug" }
 
-    fun greeting(): String = (when (LocalTime.now().hour) {
-        in 5..10 -> pick("Rise and shine. Or just rise. Baby steps.", "Morning, sleepyhead. What are we doing first?")
-        in 11..17 -> pick("Miss me? Course you did.", "There you are. What do you want to do?")
-        in 18..22 -> pick("Evening. Let's make it interesting.", "Back again? Can't stay away, huh.")
-        else -> pick("Still up? Bold. What do you need?", "It's late. Perfect time for bad ideas.")
-    }).also { mood = "wave" }
+    fun greeting(): String = psy(
+        normal = if (LocalTime.now().hour in 18..23) listOf("Evening. Let's make it interesting.", "Back again? Can't stay away, huh.")
+            else listOf("Miss me? Course you did.", "There you are. What do you want to do?"),
+        calm = listOf("Morning. Let's be efficient about this.", "Rise and shine. Or just rise. Baby steps.", "Morning. One thing at a time. What's first?"),
+        chaotic = listOf("Still up? Bold. What do you need?", "It's late. Perfect time for bad ideas.", "Sleep is for people without me. Let's go."),
+        protective = listOf("Hi. Before anything: you need a break.", "Back already? We need to talk about your habits.", "Hey. Keep it short today, okay?"),
+    ).also { mood = "wave" }
+
+    // 4.2: personality lines depend on the psyche in charge (ui/Psyche.kt). Command replies don't.
+    private fun psy(normal: List<String>, calm: List<String>, chaotic: List<String>, protective: List<String>): String =
+        when (Psyche.current) {
+            PsycheKind.CALM -> calm
+            PsycheKind.NORMAL -> normal
+            PsycheKind.CHAOTIC -> chaotic
+            PsycheKind.PROTECTIVE -> protective
+        }.random()
 
     // C2 poke reactions: quick pokes in a row escalate. Allowed poses only (see CapriSkin.ALLOWED).
     private var pokeStreak = 0
@@ -116,22 +129,37 @@ class CapriBrain(private val context: Context) {
         lastPoke = now
         if (double) return again()
         return when {
-            pokeStreak >= 3 -> pick(                                    // arms crossed, annoyed
-                "Okay. Stop. I'm counting, and you're losing.",
-                "Poke me one more time and your alarms go off at 4 a.m.",
-                "Wow. Persistent. Annoying, but persistent.",
-                "That's three. I don't do four.",
+            pokeStreak >= 3 -> psy(                                     // arms crossed, annoyed
+                normal = listOf(
+                    "Okay. Stop. I'm counting, and you're losing.",
+                    "Poke me one more time and your alarms go off at 4 a.m.",
+                    "Wow. Persistent. Annoying, but persistent.",
+                    "That's three. I don't do four.",
+                ),
+                calm = listOf("Three pokes before noon. Pace yourself.", "We were having a nice quiet morning. Were.", "Deep breath. Now stop."),
+                chaotic = listOf("Keep going. I'm rewriting your contacts as we speak.", "Three! Wanna see what four does? You don't.", "Poke war at 3 a.m.? I never lose."),
+                protective = listOf("Stop. Put the phone down. I mean it.", "Three pokes. That's your sign to take a break.", "Enough. Hands off, eyes off, go rest."),
             ).also { mood = "annoyed" }
-            pokeStreak == 2 -> pick(                                    // shrug
-                "Again? What do you want, a medal?",
-                "Twice. Cute. Got a point, or just a finger?",
-                "Yeah, still here. Still gorgeous.",
+            pokeStreak == 2 -> psy(                                     // shrug
+                normal = listOf(
+                    "Again? What do you want, a medal?",
+                    "Twice. Cute. Got a point, or just a finger?",
+                    "Yeah, still here. Still gorgeous.",
+                ),
+                calm = listOf("Twice. Use your words, it's faster.", "Still here. Still efficient. What do you need?"),
+                chaotic = listOf("Twice? Ooh, are we playing a game?", "Again! Do it again! Actually, don't."),
+                protective = listOf("Twice. You're fidgeting. Go do something real.", "I'm fine. You're the one who needs a break."),
             ).also { mood = "shrug" }
-            else -> pick(                                               // hand on hip, smirk
-                "Hey. Hands off the merchandise.",
-                "Bored already? Give me something to do.",
-                "Yes, yes, I'm adorable. Now type something.",
-                "Careful. I bite.",
+            else -> psy(                                                // hand on hip, smirk
+                normal = listOf(
+                    "Hey. Hands off the merchandise.",
+                    "Bored already? Give me something to do.",
+                    "Yes, yes, I'm adorable. Now type something.",
+                    "Careful. I bite.",
+                ),
+                calm = listOf("Morning poke. Noted. What's on the list?", "Hey. Let's get things done.", "Gentle. I'm still booting up my patience."),
+                chaotic = listOf("Ooh, a poke. Let's cause problems.", "Who needs a bedtime? Not us.", "Poke accepted. Chaos loading."),
+                protective = listOf("Hey. Have you eaten? Drunk water? Anything?", "Poking me won't charge the battery.", "I'm watching your screen time. It's not pretty."),
             ).also { mood = "sass" }
         }
     }
@@ -206,18 +234,23 @@ class CapriBrain(private val context: Context) {
     }
 
     /** 3.4: swiped back in after you swiped her away. */
-    fun back(): String = pick(
-        "Back. Try not to look so relieved.",
-        "Couldn't last a minute without me, huh?",
-        "Did you miss me, or do you need something?",
+    fun back(): String = psy(
+        normal = listOf("Back. Try not to look so relieved.", "Couldn't last a minute without me, huh?", "Did you miss me, or do you need something?"),
+        calm = listOf("Back. Let's pick up where we left off.", "Short break. Good. Now, work."),
+        chaotic = listOf("Surprise! Did you think I'd stay gone?", "You can't get rid of me. Nobody can."),
+        protective = listOf("Back. And I'm not leaving while you're like this.", "Swiping me away won't fix your battery."),
     ).also { mood = "smirk" }
 
     /** C4: poked while she was dozing late at night. */
-    fun wakeUp(): String = pick(
-        "Wha— I wasn't sleeping. I was buffering.",
-        "Rude. I was having a great dream and you weren't in it.",
-        "It's the middle of the night. What could you possibly need?",
-        "Poke me awake again and I'm changing your ringtone.",
+    fun wakeUp(): String = psy(
+        normal = listOf("Wha— I wasn't sleeping. I was buffering.", "Rude. I was having a great dream and you weren't in it."),
+        calm = listOf("Mm. Up. Efficiently. Mostly.", "Wasn't asleep. Was conserving energy."),
+        chaotic = listOf(
+            "Wha— I wasn't sleeping. I was buffering.",
+            "It's the middle of the night. What could you possibly need?",
+            "Poke me awake again and I'm changing your ringtone.",
+        ),
+        protective = listOf("I was resting. You should try it.", "Up again? Both of us need sleep. You first."),
     ).also {
         pokeStreak = 0
         mood = "annoyed"
@@ -252,11 +285,11 @@ class CapriBrain(private val context: Context) {
     ).also { mood = "notif" }
 
     /** Press and hold on her (3.2): the chatbox opens, she's listening, smug about it. */
-    fun hold(): String = pick(
-        "Go on. I'm listening.",
-        "You've got my attention. Use it well.",
-        "Talk to me. Make it interesting.",
-        "Fine, I'm all ears. Type.",
+    fun hold(): String = psy(
+        normal = listOf("Go on. I'm listening.", "You've got my attention. Use it well.", "Talk to me. Make it interesting.", "Fine, I'm all ears. Type."),
+        calm = listOf("Listening. Keep it short and clear.", "Go ahead. One thing at a time."),
+        chaotic = listOf("Talk. Say something unhinged.", "I'm listening. Make it weird."),
+        protective = listOf("I'm listening. Then you rest.", "Go on. Quick, then phone down."),
     ).also {
         pokeStreak = 0
         mood = "smug"
@@ -505,13 +538,23 @@ class CapriBrain(private val context: Context) {
         }
 
         if (Regex("^(hi|hey|hello|yo|sup|hiya|heya)\\b").containsMatchIn(t)) {
-            return done(pick("Hey yourself.", "Yo. What are we getting into?", "Hi, hi. Skip the small talk, what do you want?"), "wave")
+            return done(psy(
+                normal = listOf("Hey yourself.", "Yo. What are we getting into?", "Hi, hi. Skip the small talk, what do you want?"),
+                calm = listOf("Morning. What's the plan?", "Hi. Let's be quick and brilliant."),
+                chaotic = listOf("HEY. It's late and I'm wired.", "Yo. Let's do something we'll regret."),
+                protective = listOf("Hi. How long have you been on this thing?", "Hey. You okay? Honestly?"),
+            ), "wave")
         }
         if ("who are you" in t || "your name" in t) {
             return done("Capri. A whole crowd of minds rolled into one gorgeous package. You're welcome.", "sass")
         }
         if (Regex("\\b(thanks|thank you|thx|ty)\\b").containsMatchIn(t)) {
-            return done(pick("I know, I'm the best.", "You owe me one. I'm keeping count."), "sass")
+            return done(psy(
+                normal = listOf("I know, I'm the best.", "You owe me one. I'm keeping count."),
+                calm = listOf("Anytime. Next.", "Efficient, aren't I?"),
+                chaotic = listOf("Thank me in snacks.", "Gratitude? At this hour? Weird."),
+                protective = listOf("Thank me by taking a break.", "You're welcome. Now look after yourself."),
+            ), "sass")
         }
         if (Regex("\\b(help|what can you do)\\b").containsMatchIn(t)) {
             return done("Say an app's name and I open it. Also: alarm 7:30, timer 10 min, photo, flashlight, screenshot, lock, apps, notifs, unhide, call mom, pause / next, wifi, bluetooth, silent / vibrate / sound on, classes, weather, gestures. Drag an app onto me and I'll handle it. Say \"overlay\" and I follow you into other apps.", "neutral")
@@ -533,10 +576,11 @@ class CapriBrain(private val context: Context) {
         }
 
         return done(
-            pick(
-                "No clue what that means. Use smaller words.",
-                "That one's beyond me. For now.",
-                "Cute. Try \"help\" if you're lost.",
+            psy(
+                normal = listOf("No clue what that means. Use smaller words.", "That one's beyond me. For now.", "Cute. Try \"help\" if you're lost."),
+                calm = listOf("Didn't get that. Rephrase, simply.", "Unclear. Try \"help\"."),
+                chaotic = listOf("Gibberish! I love it. Still no idea though.", "That made zero sense. Respect."),
+                protective = listOf("Didn't get that. Maybe you're tired?", "Not a command. Is it bedtime yet?"),
             ),
             "shrug",
         )
