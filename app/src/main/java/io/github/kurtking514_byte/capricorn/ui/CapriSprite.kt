@@ -698,6 +698,19 @@ object CapriAway {
         changedAt = android.os.SystemClock.uptimeMillis()
         onChange(away)
     }
+
+    /** 3.10 face down: she glitches out, no line. */
+    fun leave() {
+        if (away) return
+        away = true
+        changedAt = android.os.SystemClock.uptimeMillis()
+    }
+
+    /** 3.10 picked up: she glitches back in (0.5 s appear) even if she never left; the caller says the line. */
+    fun appear() {
+        away = false
+        changedAt = android.os.SystemClock.uptimeMillis()
+    }
 }
 internal const val AWAY_SWIPE_DP = 80
 internal const val AWAY_OUT_MS = 250f

@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <!-- 3.9e: weather in the status scan (Open-Meteo, rough location only, asked via chat "weather") -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 3.10: face down = full silent (user allows "Do Not Disturb access" via chat "quiet") -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- 3.9e: screen time today (user turns on "Usage access" via chat "usage") -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />

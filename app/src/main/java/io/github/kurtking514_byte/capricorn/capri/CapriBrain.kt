@@ -41,6 +41,18 @@ class CapriBrain(private val context: Context) {
         }.also { mood = "smirk" }
     }
 
+    /** 3.10: picked up after lying face down; her sound mode is back. */
+    fun backOnline(fullSilent: Boolean): String = (
+        if (!fullSilent) pick(
+            "Back online. I could only do vibrate, though. Say \"quiet\" and I'll go fully dark next time.",
+            "Sound's back. That was just vibrate: say \"quiet\" if you want real silence.",
+        ) else pick(
+            "Back online. Miss me?",
+            "And we're live again. Ringer's back.",
+            "Rebooted. Sound's on, try not to miss anything.",
+        )
+    ).also { mood = "smirk" }
+
     fun weatherFailed(): String = pick("Couldn't reach the sky. No signal, or no location fix.", "Weather's not answering. Try again outside.").also { mood = "shrug" }
     fun weatherDenied(): String = pick("No location, no weather. Your loss.", "Fine, keep your secrets. And your rain.").also { mood = "shrug" }
 
@@ -265,6 +277,13 @@ class CapriBrain(private val context: Context) {
         // show every pose once, 2 s each (handled by CapriSpriteFigure)
         if (t == "poses" || t == "pose" || t == "show poses") {
             return done(pick("Fine. Full catalogue. Don't blink.", "Runway mode. Try to keep up."), "showcase")
+        }
+
+        // 3.10: Do Not Disturb access, so face down can mean full silent
+        if (t in setOf("quiet", "dnd", "do not disturb", "silent access")) {
+            if (FaceDown.fullSilentAllowed(context)) return done("Already got it. Flip me over and I go dark.", "sass")
+            start(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+            return done("Find \"Capri\" and allow it. Then face down means real silence.", "smirk")
         }
 
         // 3.9e: screen time (Usage access)

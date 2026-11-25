@@ -43,6 +43,7 @@ import io.github.kurtking514_byte.capricorn.ui.DRAWER_CLOSE_MS
 import io.github.kurtking514_byte.capricorn.ui.AppDrawer
 import io.github.kurtking514_byte.capricorn.ui.ClassGrid
 import io.github.kurtking514_byte.capricorn.capri.Weather
+import io.github.kurtking514_byte.capricorn.capri.FaceDown
 import android.Manifest
 import androidx.activity.result.contract.ActivityResultContracts
 import io.github.kurtking514_byte.capricorn.ui.StatusScan
@@ -111,6 +112,8 @@ class MainActivity : ComponentActivity() {
         if (w != null) StatusScan.update(PhoneStatus.read(this))
     }
 
+    private fun onHome() = !showBoot && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+
     /** C5: a phone reaction. Only while home is on screen and the boot is done; returns true if she said it. */
     private fun react(line: () -> String): Boolean {
         if (showBoot || !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return false
@@ -174,6 +177,9 @@ class MainActivity : ComponentActivity() {
         AppGrab.onHover = { over -> if (over) say(brain.grabHover()) }
         AppGrab.onDrop = { say(brain.grab(it.label)) }
         CapriAway.onChange = { away -> if (!away) say(brain.back()) }
+        // 3.10: face down = quiet (she glitches out here), picked up = sound back + she glitches in
+        FaceDown.onFaceDown = { if (onHome()) CapriAway.leave() }
+        FaceDown.onPickedUp = { full -> if (onHome()) { CapriAway.appear(); say(brain.backOnline(full)) } else CapriAway.reset() }
         launchCounts = prefs.launchCounts()
         getSystemService(LauncherApps::class.java).registerCallback(packageCallback)
         ContextCompat.registerReceiver(
@@ -273,11 +279,13 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         resumeTick++
+        FaceDown.watch(this, "home", true)
         Weather.refresh(this)                     // 3.9e: keep the weather fresh (skips if not allowed / still fresh)
         CapriNotifListener.onNew = { pkg -> runOnUiThread { onNotification(pkg) } }
     }
 
     override fun onPause() {
+        FaceDown.watch(this, "home", false)
         CapriNotifListener.onNew = null
         super.onPause()
     }

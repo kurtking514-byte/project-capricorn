@@ -22,6 +22,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.res.ResourcesCompat
 import io.github.kurtking514_byte.capricorn.R
+import io.github.kurtking514_byte.capricorn.capri.FaceDown
 import io.github.kurtking514_byte.capricorn.ui.CapriSkin
 import kotlin.math.abs
 
@@ -54,10 +55,22 @@ class CapriOverlayService : AccessibilityService() {
     private val miniW get() = dp(84f)
     private val miniH get() = dp(96f)
 
+    // 3.10: face down = quiet, in every app, but only while the screen is on
+    private val screenReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
+            FaceDown.watch(this@CapriOverlayService, "overlay", intent.action == android.content.Intent.ACTION_SCREEN_ON)
+        }
+    }
+
     override fun onServiceConnected() {
         instance = this
         wm = getSystemService(WindowManager::class.java)
         addMini()
+        registerReceiver(screenReceiver, android.content.IntentFilter().apply {
+            addAction(android.content.Intent.ACTION_SCREEN_ON)
+            addAction(android.content.Intent.ACTION_SCREEN_OFF)
+        })
+        FaceDown.watch(this, "overlay", getSystemService(android.os.PowerManager::class.java)?.isInteractive != false)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -82,6 +95,8 @@ class CapriOverlayService : AccessibilityService() {
     override fun onInterrupt() {}
 
     override fun onDestroy() {
+        runCatching { unregisterReceiver(screenReceiver) }
+        FaceDown.watch(this, "overlay", false)
         closePanel()
         mini?.let { runCatching { wm.removeView(it) } }
         mini = null
