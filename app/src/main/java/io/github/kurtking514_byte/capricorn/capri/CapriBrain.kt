@@ -1,5 +1,6 @@
 package io.github.kurtking514_byte.capricorn.capri
 
+import io.github.kurtking514_byte.capricorn.ui.Panels
 import io.github.kurtking514_byte.capricorn.ui.Psyche
 import io.github.kurtking514_byte.capricorn.ui.PsycheKind
 
@@ -446,6 +447,16 @@ class CapriBrain(private val context: Context) {
         // 4.4: the setup checklist (opened by MainActivity.say)
         if (t in setOf("setup", "set up", "permissions", "permission", "onboarding")) {
             return done(pick("Setup. Tap what you want me to do.", "Permissions time. Make it quick."), "setup")
+        }
+
+        // 4.6b: panel strength behind the clock / bubble / chatbox / dock (next step)
+        if (t in setOf("panels", "panel", "panel strength")) {
+            return done(when (Panels.next(context)) {
+                0 -> "Panels off. Bold. Hope you can read."
+                1 -> "Light panels. Just a hint of me."
+                2 -> "Medium. The sensible choice. Boring, but sensible."
+                else -> "Strong panels. Nothing gets in the way of my words."
+            }, "smirk")
         }
 
         // 3.12: gesture settings

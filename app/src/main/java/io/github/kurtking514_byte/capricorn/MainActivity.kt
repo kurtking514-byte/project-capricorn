@@ -264,6 +264,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Gestures.init(this)                        // 3.12: which gestures are on
+        io.github.kurtking514_byte.capricorn.ui.Panels.init(this)   // 4.6b: panel strength
         BatteryTracker.start(this)                 // 3.9b: learns the real drain for the battery estimate
         // Capri is always dark, so keep status/nav bar icons light even if the phone is in light mode.
         enableEdgeToEdge(

@@ -336,8 +336,8 @@ fun HomeScreen(
                     cursorColor = CapriColors.Acid,
                     focusedTextColor = CapriColors.Text,
                     unfocusedTextColor = CapriColors.Text,
-                    focusedContainerColor = CapriColors.Panel,
-                    unfocusedContainerColor = CapriColors.Panel,
+                    focusedContainerColor = CapriColors.Panel.copy(alpha = Panels.alpha),      // 4.6b
+                    unfocusedContainerColor = CapriColors.Panel.copy(alpha = Panels.alpha),
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -433,7 +433,11 @@ private fun Clock(resumeTick: Int, modifier: Modifier = Modifier) {
         letterSpacing = (-1).sp,
     )
 
-    Column(modifier.fillMaxWidth()) {
+    Column(
+        modifier.fillMaxWidth()
+            .background(CapriColors.Panel.copy(alpha = Panels.alpha), CutCornerShape(topEnd = 12.dp, bottomStart = 12.dp))   // 4.6b
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "// LOCAL TIME",
@@ -613,12 +617,12 @@ private fun SpeechBubble(text: String, modifier: Modifier = Modifier) {
                 val tail = Path().apply {
                     moveTo(cx - half, size.height - 1f); lineTo(cx + half, size.height - 1f); lineTo(cx, size.height + half); close()
                 }
-                drawPath(tail, CapriColors.Panel)
+                drawPath(tail, CapriColors.Panel.copy(alpha = Panels.alpha))
                 drawLine(Psyche.accent, Offset(cx - half, size.height), Offset(cx, size.height + half), strokeWidth = 1.dp.toPx())
                 drawLine(Psyche.accent, Offset(cx + half, size.height), Offset(cx, size.height + half), strokeWidth = 1.dp.toPx())
             }
             .border(1.dp, Psyche.accent, shape)
-            .background(CapriColors.Panel, shape)
+            .background(CapriColors.Panel.copy(alpha = Panels.alpha), shape)                  // 4.6b
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
         Text(
@@ -659,7 +663,7 @@ private fun Dock(
         modifier = Modifier
             .fillMaxWidth()
             .border(1.dp, CapriColors.Cyan.copy(alpha = 0.5f), shape)
-            .background(CapriColors.Panel, shape)
+            .background(CapriColors.Panel.copy(alpha = Panels.alpha), shape)                  // 4.6b
             .padding(vertical = 6.dp, horizontal = 8.dp),
     ) {
         if (apps.isEmpty()) {

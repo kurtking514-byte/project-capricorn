@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -64,6 +65,13 @@ fun GestureScreen(onClose: () -> Unit) {
                 Box(Modifier.fillMaxWidth().height(2.dp).background(GLITCH_CRIMSON))
                 for (g in list) GestureRow(g)
             }
+            // 4.6b: panel strength (not a gesture, but this is Capri's settings screen)
+            Text(
+                "HOME SCREEN", Modifier.padding(top = 14.dp, bottom = 6.dp),
+                fontFamily = FontFamily.Monospace, fontSize = 11.sp, letterSpacing = 2.sp, color = GLITCH_CRIMSON,
+            )
+            Box(Modifier.fillMaxWidth().height(2.dp).background(GLITCH_CRIMSON))
+            PanelsRow()
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -88,6 +96,22 @@ private fun GestureRow(g: Gesture) {
             FlowRow(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 for (j in GestureJob.entries) Chip(j.label, j == job) { Gestures.setJob(g, j) }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PanelsRow() {
+    val ctx = LocalContext.current
+    Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+        Text("PANELS", fontFamily = FAN_FONT, fontSize = 15.sp, color = CapriColors.Text)
+        Text(
+            "Dark see-through panels behind the clock, bubble, chatbox and dock.",
+            fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = CapriColors.Dim,
+        )
+        FlowRow(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Panels.LEVELS.forEachIndexed { i, label -> Chip(label, i == Panels.level) { Panels.set(ctx, i) } }
         }
     }
 }
