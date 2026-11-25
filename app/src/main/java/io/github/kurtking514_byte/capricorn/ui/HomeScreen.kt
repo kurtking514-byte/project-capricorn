@@ -448,7 +448,7 @@ private fun Clock(resumeTick: Int, modifier: Modifier = Modifier) {
                 Modifier
                     .weight(1f)
                     .height(1.dp)
-                    .background(CapriColors.Cyan.copy(alpha = 0.4f))
+                    .background(Psyche.current.accent.copy(alpha = 0.4f))
             )
             Spacer(Modifier.width(8.dp))
             Text("NC-SYS", color = CapriColors.Dim, style = MaterialTheme.typography.labelSmall, letterSpacing = 2.sp)
@@ -457,7 +457,7 @@ private fun Clock(resumeTick: Int, modifier: Modifier = Modifier) {
             // the time, drawn three times: crimson and cyan copies pushed apart behind the white one
             Box {
                 Text(time, style = timeStyle, color = CapriColors.Pink, modifier = Modifier.offset(x = (-3).dp, y = 1.dp))
-                Text(time, style = timeStyle, color = CapriColors.Cyan, modifier = Modifier.offset(x = 3.dp, y = (-1).dp))
+                Text(time, style = timeStyle, color = Psyche.current.accent, modifier = Modifier.offset(x = 3.dp, y = (-1).dp))
                 Text(time, style = timeStyle, color = CapriColors.Text)
             }
             Spacer(Modifier.weight(1f))
@@ -475,7 +475,7 @@ private fun Clock(resumeTick: Int, modifier: Modifier = Modifier) {
                 Spacer(Modifier.height(4.dp))
                 Text(
                     date,
-                    color = CapriColors.Cyan,
+                    color = Psyche.current.accent,
                     fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.titleSmall,
                     letterSpacing = 2.sp,
@@ -494,9 +494,9 @@ private fun Clock(resumeTick: Int, modifier: Modifier = Modifier) {
             for (hour in 0 until 24) {
                 val x = hour * (seg + gap)
                 val color = when {
-                    hour < now.hour -> CapriColors.Cyan
+                    hour < now.hour -> Psyche.current.accent
                     hour == now.hour -> CapriColors.Pink
-                    else -> CapriColors.Cyan.copy(alpha = 0.18f)
+                    else -> Psyche.current.accent.copy(alpha = 0.18f)
                 }
                 drawPath(Path().apply {
                     moveTo(x + slant, 0f); lineTo(x + seg + slant, 0f); lineTo(x + seg, size.height); lineTo(x, size.height); close()
@@ -615,10 +615,10 @@ private fun SpeechBubble(text: String, modifier: Modifier = Modifier) {
                     moveTo(cx - half, size.height - 1f); lineTo(cx + half, size.height - 1f); lineTo(cx, size.height + half); close()
                 }
                 drawPath(tail, CapriColors.Panel)
-                drawLine(CapriColors.Cyan, Offset(cx - half, size.height), Offset(cx, size.height + half), strokeWidth = 1.dp.toPx())
-                drawLine(CapriColors.Cyan, Offset(cx + half, size.height), Offset(cx, size.height + half), strokeWidth = 1.dp.toPx())
+                drawLine(Psyche.current.accent, Offset(cx - half, size.height), Offset(cx, size.height + half), strokeWidth = 1.dp.toPx())
+                drawLine(Psyche.current.accent, Offset(cx + half, size.height), Offset(cx, size.height + half), strokeWidth = 1.dp.toPx())
             }
-            .border(1.dp, CapriColors.Cyan, shape)
+            .border(1.dp, Psyche.current.accent, shape)
             .background(CapriColors.Panel, shape)
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {

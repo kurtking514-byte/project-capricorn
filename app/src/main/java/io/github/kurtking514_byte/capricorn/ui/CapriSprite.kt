@@ -361,14 +361,29 @@ fun CapriSpriteFigure(
         current = if (mood == "showcase") "neutral" else mood
         delay(4_500)
         current = "neutral"
-        // Left alone: every so often, do something for a while, then get back up.
-        // C4: brisk in the morning, slower in the evening, slowest late at night.
+        // Left alone: every so often, do something for a while, then go back to neutral.
+        // 4.1: the psyche in charge picks the poses and the rhythm (replaces the C4 time-of-day pace).
         while (activities.isNotEmpty()) {
-            delay((Random.nextLong(4_000L, 8_000L) * CapriTime.period.pace).toLong())
-            if (CapriTime.dozing) continue                 // asleep on her feet: no activities
-            activity = (activities - lastActivity).randomOrNull() ?: activities.random()
-            lastActivity = activity
-            delay((Random.nextLong(6_000L, 10_000L) * CapriTime.period.pace).toLong())
+            val ps = Psyche.current
+            val acts = ps.poses.filter { it in activities }.ifEmpty { activities }
+            if (ps.stare) {                                // PROTECTIVE: one pose, held, staring at you
+                if (activity !in acts) { delay(ps.gap.first); activity = acts.first(); lastActivity = activity }
+                delay(1_000)
+                continue
+            }
+            delay(Random.nextLong(ps.gap.first, ps.gap.last + 1))
+            if (CapriTime.dozing) { activity = null; continue }   // asleep on her feet: no activities
+            if (Psyche.current != ps) continue
+            val pick = (acts - lastActivity).randomOrNull() ?: acts.random()
+            activity = pick
+            lastActivity = pick
+            val hold = Random.nextLong(ps.hold.first, ps.hold.last + 1)
+            val looks = listOf("idle_look_left", "idle_look_right").filter { it in activities }
+            if (ps.glance > 0f && Random.nextFloat() < ps.glance && pick !in looks && looks.isNotEmpty()) {
+                delay(hold / 2)                            // CHAOTIC: a twitchy glance away and back
+                activity = looks.random(); delay(250)
+                activity = pick; delay(hold / 2)
+            } else delay(hold)
             activity = null
         }
     }
@@ -417,10 +432,12 @@ fun CapriSpriteFigure(
         looking = false
     }
 
-    // C4: keep the time-of-day period current (checked once a minute).
+    // C4: keep the time-of-day period current; 4.1: and which psyche is in charge (checked once a minute).
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) {
         while (true) {
             CapriTime.refresh()
+            Psyche.update(ctx)
             delay(60_000)
         }
     }
