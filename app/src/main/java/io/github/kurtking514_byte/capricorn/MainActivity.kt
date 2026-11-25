@@ -49,6 +49,7 @@ import io.github.kurtking514_byte.capricorn.data.Gestures
 import io.github.kurtking514_byte.capricorn.capri.Weather
 import io.github.kurtking514_byte.capricorn.capri.FaceDown
 import io.github.kurtking514_byte.capricorn.capri.ContactNumber
+import io.github.kurtking514_byte.capricorn.capri.SettingsSearch
 import android.Manifest
 import androidx.activity.result.contract.ActivityResultContracts
 import io.github.kurtking514_byte.capricorn.ui.StatusScan
@@ -277,6 +278,10 @@ class MainActivity : ComponentActivity() {
                         onPickContact = {
                             contactPick = null
                             say(brain.contactPicked(it))
+                        },
+                        onOpenSetting = { pg ->                      // 3.14: Capri's own pages go through her chat
+                            if (pg.chat != null) say(brain.respond(pg.chat, apps, ::launchSoon) { drawerOpen = true })
+                            else if (SettingsSearch.open(this@MainActivity, pg)) say(brain.settingOpened(pg.title))
                         },
                         onPickLetterApp = {
                             letterPick = null

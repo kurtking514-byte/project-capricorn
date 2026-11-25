@@ -1,6 +1,9 @@
 package io.github.kurtking514_byte.capricorn.ui
 
 import io.github.kurtking514_byte.capricorn.capri.ContactNumber
+import io.github.kurtking514_byte.capricorn.capri.Contacts
+import io.github.kurtking514_byte.capricorn.capri.SettingPage
+import io.github.kurtking514_byte.capricorn.capri.SettingsSearch
 
 import android.text.format.DateFormat
 import androidx.compose.animation.core.Animatable
@@ -110,6 +113,7 @@ fun HomeScreen(
     onPickLetterApp: (AppEntry) -> Unit,
     contactPick: List<ContactNumber>? = null,        // 3.13: "call alex" matched several numbers
     onPickContact: (ContactNumber) -> Unit = {},
+    onOpenSetting: (SettingPage) -> Unit = {},        // 3.14: a settings chip in the live search
     onDoubleTapEmpty: () -> Unit,                   // 3.6: lock
     onTwoFingerDown: () -> Unit,                    // 3.7: flashlight
     onTwoFingerHold: () -> Unit,                    // 3.9a: status scan
@@ -176,6 +180,14 @@ fun HomeScreen(
             apps.filter { !it.label.startsWith(q, ignoreCase = true) && it.label.contains(q, ignoreCase = true) })
             .take(4)
     }
+    // 3.14: the same live search also finds contacts (only if Contacts access is already on) and settings pages
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val contactHits = remember(query) {
+        val q = query.trim().replace(Regex("^(call|phone|dial|ring)\\s+", RegexOption.IGNORE_CASE), "")
+        if (q.length < 2) emptyList() else Contacts.find(context, q, all = true).take(3)
+    }
+    val settingHits = remember(query) { SettingsSearch.search(query, 3) }
+    val labeled = listOf(suggestions.isNotEmpty(), contactHits.isNotEmpty(), settingHits.isNotEmpty()).count { it } > 1
 
     fun submit() {
         val text = query
@@ -226,8 +238,10 @@ fun HomeScreen(
                     .weight(1f),
             )
 
-            if (suggestions.isNotEmpty()) {
-                Row(
+            if (suggestions.isNotEmpty() || contactHits.isNotEmpty() || settingHits.isNotEmpty()) {
+                fun done() { query = ""; keyboard?.hide() }
+                if (labeled && suggestions.isNotEmpty()) SearchLabel("APPS")
+                if (suggestions.isNotEmpty()) Row(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -238,12 +252,26 @@ fun HomeScreen(
                             app = app,
                             inDock = app.key in dockKeys,
                             showLabel = true,
-                            onLaunch = { query = ""; keyboard?.hide(); onLaunch(it) },
+                            onLaunch = { done(); onLaunch(it) },
                             onToggleDock = onToggleDock,
                             onAppInfo = onAppInfo,
                             modifier = Modifier.weight(1f),
                             draggable = true,
                         )
+                    }
+                }
+                if (contactHits.isNotEmpty()) {
+                    if (labeled) SearchLabel("CONTACTS")
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                        contactHits.forEach { c -> SearchChip(c.name, c.type, Modifier.weight(1f)) { done(); onPickContact(c) } }
+                        repeat(3 - contactHits.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+                if (settingHits.isNotEmpty()) {
+                    if (labeled) SearchLabel("SETTINGS")
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                        settingHits.forEach { pg -> SearchChip(pg.title, if (pg.isCapri) "CAPRI" else "SETTINGS", Modifier.weight(1f)) { done(); onOpenSetting(pg) } }
+                        repeat(3 - settingHits.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
             } else if (contactPick != null) {
@@ -675,5 +703,27 @@ private fun Dock(
                 }
             }
         }
+    }
+}
+
+/** 3.14: small label over a live search row (APPS / CONTACTS / SETTINGS). */
+@Composable
+private fun SearchLabel(text: String) {
+    Text(
+        text, color = CapriColors.Acid, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.5.sp,
+        modifier = Modifier.fillMaxWidth().padding(top = 6.dp, start = 4.dp),
+    )
+}
+
+/** 3.14: flat crimson-edged chip: [title] on top, small [sub] (MOBILE / SETTINGS / CAPRI) under it. */
+@Composable
+private fun SearchChip(title: String, sub: String, modifier: Modifier, onClick: () -> Unit) {
+    Column(
+        modifier.background(androidx.compose.ui.graphics.Color.Black).border(1.5.dp, GLITCH_CRIMSON)
+            .clickable(onClick = onClick).padding(horizontal = 6.dp, vertical = 7.dp),
+    ) {
+        Text(title, color = CapriColors.Text, fontSize = 13.sp, fontFamily = FAN_FONT, maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        Text(sub, color = CapriColors.Dim, fontSize = 10.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, maxLines = 1)
     }
 }

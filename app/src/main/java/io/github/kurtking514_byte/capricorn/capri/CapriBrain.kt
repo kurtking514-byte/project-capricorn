@@ -85,6 +85,10 @@ class CapriBrain(private val context: Context) {
         if (Contacts.dial(context, c)) done(pick("${c.name}. Number's in, you press call.", "Dialing ${c.name}. Your thumb does the rest."), "smirk")
         else "No phone app to dial with. Tragic.".also { mood = "shrug" }
 
+    /** 3.14: a settings page opened from the chatbox search. */
+    fun settingOpened(title: String): String =
+        done(pick("$title. Don't break anything.", "There's your $title. Fiddle away.", "$title, as ordered."), "smirk")
+
     fun contactsDenied(): String = pick("No contacts, no calls. Dial it yourself then.", "Fine. Keep your friends secret.").also { mood = "shrug" }
 
     fun weatherFailed(): String = pick("Couldn't reach the sky. No signal, or no location fix.", "Weather's not answering. Try again outside.").also { mood = "shrug" }

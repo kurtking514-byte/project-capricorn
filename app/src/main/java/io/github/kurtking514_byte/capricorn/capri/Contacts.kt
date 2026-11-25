@@ -20,7 +20,7 @@ object Contacts {
         ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
 
     /** Numbers whose contact name matches [query]: exact name first, then starts-with, then contains; starred first. */
-    fun find(context: Context, query: String): List<ContactNumber> {
+    fun find(context: Context, query: String, all: Boolean = false): List<ContactNumber> {
         if (!allowed(context)) return emptyList()
         val q = query.trim().lowercase()
         if (q.isEmpty()) return emptyList()
@@ -52,6 +52,7 @@ object Contacts {
                 }
             }
         } catch (e: Exception) { return emptyList() }
+        if (all) return hits.sortedBy { it.rank }.map { it.c }        // 3.14 live search: every match, best first
         val best = hits.minOfOrNull { it.rank / 2 } ?: return emptyList()
         return hits.filter { it.rank / 2 == best }.sortedBy { it.rank }.map { it.c }
     }
