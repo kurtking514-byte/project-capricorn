@@ -1,5 +1,8 @@
 package io.github.kurtking514_byte.capricorn.ui
 
+import io.github.kurtking514_byte.capricorn.data.Gesture
+import io.github.kurtking514_byte.capricorn.data.Gestures
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -128,7 +131,7 @@ fun Modifier.homeStrokes(
             val last = pts.last()
             if (hypot(ch.position.x - last.x, ch.position.y - last.y) > 3.dp.toPx()) pts.add(ch.position)
             if (!started && (ch.position - p0).getDistance() > slop) started = true
-            if (started && canDraw) {
+            if (started && canDraw && Gestures.on(Gesture.LETTER)) {
                 ch.consume()
                 if (!LetterDraw.drawing) { LetterDraw.stroke.clear(); LetterDraw.drawing = true }
                 LetterDraw.stroke.add(ch.position)
@@ -161,12 +164,12 @@ fun Modifier.homeStrokes(
         val dy = end.y - p0.y
         var length = 0f
         for (i in 1 until pts.size) length += (pts[i] - pts[i - 1]).getDistance()
-        if (dy < -100.dp.toPx() && abs(dx) < abs(dy) * 0.4f && length < abs(dy) * 1.25f) {
+        if (Gestures.on(Gesture.SWIPE_UP) && dy < -100.dp.toPx() && abs(dx) < abs(dy) * 0.4f && length < abs(dy) * 1.25f) {
             LetterDraw.cancel()
             onDrawer()
             return@awaitEachGesture
         }
-        if (!canDraw) { LetterDraw.cancel(); return@awaitEachGesture }
+        if (!canDraw || !Gestures.on(Gesture.LETTER)) { LetterDraw.cancel(); return@awaitEachGesture }
 
         // too small = a tap or a twitch, not a letter
         val w = pts.maxOf { it.x } - pts.minOf { it.x }

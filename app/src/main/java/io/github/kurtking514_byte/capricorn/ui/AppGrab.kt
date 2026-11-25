@@ -1,5 +1,8 @@
 package io.github.kurtking514_byte.capricorn.ui
 
+import io.github.kurtking514_byte.capricorn.data.Gesture
+import io.github.kurtking514_byte.capricorn.data.Gestures
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -128,6 +131,7 @@ enum class GrabAction { PIN, INFO, UNINSTALL, HIDE, CANCEL }
 fun Modifier.appGesture(
     app: AppEntry, draggable: Boolean, onTap: () -> Unit, onMenu: () -> Unit,
 ): Modifier = composed {
+    @Suppress("NAME_SHADOWING") val draggable = draggable && Gestures.on(Gesture.HER_DRAG)   // 3.12
     val haptics = LocalHapticFeedback.current
     var origin by remember { mutableStateOf(Offset.Zero) }
     this

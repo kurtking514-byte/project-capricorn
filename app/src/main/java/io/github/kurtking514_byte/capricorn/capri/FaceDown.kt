@@ -1,5 +1,8 @@
 package io.github.kurtking514_byte.capricorn.capri
 
+import io.github.kurtking514_byte.capricorn.data.Gesture
+import io.github.kurtking514_byte.capricorn.data.Gestures
+
 import android.app.NotificationManager
 import android.content.Context
 import android.hardware.Sensor
@@ -68,7 +71,9 @@ object FaceDown : SensorEventListener {
         val (x, y, z) = Triple(e.values[0], e.values[1], e.values[2])
         val now = SystemClock.uptimeMillis()
         val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (prefs.getBoolean("muted", false)) {
+        val muted = prefs.getBoolean("muted", false)
+        if (!muted && !Gestures.on(Gesture.FACE_DOWN)) { downSince = 0L; return }   // 3.12: switched off
+        if (muted) {
             downSince = 0L
             if (z > UP_Z) {
                 if (upSince == 0L) upSince = now

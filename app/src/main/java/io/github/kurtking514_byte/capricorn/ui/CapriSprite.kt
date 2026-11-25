@@ -1,5 +1,8 @@
 package io.github.kurtking514_byte.capricorn.ui
 
+import io.github.kurtking514_byte.capricorn.data.Gesture
+import io.github.kurtking514_byte.capricorn.data.Gestures
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -524,7 +527,7 @@ fun CapriSpriteFigure(
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { if (!CapriAway.away) poke(false) },
-                    onLongPress = { if (!CapriAway.away) { listenTick++; poke(true) } },
+                    onLongPress = { if (!CapriAway.away && Gestures.on(Gesture.HER_HOLD)) { listenTick++; poke(true) } },
                 )
             }
             .pointerInput(Unit) {
@@ -532,7 +535,7 @@ fun CapriSpriteFigure(
                 var dx = 0f
                 detectHorizontalDragGestures(
                     onDragStart = { dx = 0f },
-                    onDragEnd = { if (kotlin.math.abs(dx) > AWAY_SWIPE_DP.dp.toPx()) CapriAway.toggle() },
+                    onDragEnd = { if (kotlin.math.abs(dx) > AWAY_SWIPE_DP.dp.toPx() && (CapriAway.away || Gestures.on(Gesture.HER_SWIPE))) CapriAway.toggle() },
                 ) { change, amount ->
                     dx += amount
                     change.consume()

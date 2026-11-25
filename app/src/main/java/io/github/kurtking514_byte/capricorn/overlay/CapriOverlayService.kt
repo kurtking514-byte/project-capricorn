@@ -64,6 +64,7 @@ class CapriOverlayService : AccessibilityService() {
 
     override fun onServiceConnected() {
         instance = this
+        io.github.kurtking514_byte.capricorn.data.Gestures.init(this)
         wm = getSystemService(WindowManager::class.java)
         addMini()
         registerReceiver(screenReceiver, android.content.IntentFilter().apply {

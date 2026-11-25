@@ -21,7 +21,7 @@ The user wants **small steps**. One prompt = one step from the checklist below, 
 - Design changes (how Capri looks or moves): change the **web preview first**
   (https://claude.ai/artifact/RmuNRE6DApvY4ajvwwydrM), get the user's OK, then port to the app as its own step.
 - Pure functionality (commands, permissions, bug fixes) can go straight into the app.
-- Commits: only when the user asks. No Claude/AI attribution lines in commits or PRs.
+- Commits: after each finished step (builds clean, ticked), commit and push to GitHub without asking (user choice 2026-11-25). No Claude/AI attribution lines in commits or PRs.
 
 ## Where we are (2026-11-17)
 
@@ -133,9 +133,9 @@ On the empty screen:
   - [x] 3.9e (2026-11-25, builds; not seen on phone; `capri/ScreenTime.kt`, `capri/Weather.kt`) Screen time today (Usage access, chat `usage`; total + most-used app, crimson at 5 h+) + weather (user picked rough phone location: chat `weather` asks for approximate location; Open-Meteo, position rounded to 0.1 deg, cached 30 min, refreshed on Home and on the scan). Both lines always at the bottom of the readout. New permissions: INTERNET, ACCESS_COARSE_LOCATION, PACKAGE_USAGE_STATS
 Moving the phone:
 - [x] 3.10 (2026-11-25, builds; not seen on phone; `capri/FaceDown.kt`) Face down = silent mode; picked up = "back online" + glitch-in, sound mode restored. User picks: works everywhere while the screen is on (home while showing + overlay service with screen-on/off receiver; never with the screen off), full silent if Do Not Disturb access (chat `quiet`) else vibrate, pickup on home = `CapriAway.appear()` + `brain.backOnline()` (on face down she `leave()`s), in other apps only the sound comes back. Face down 1 s (z < -8), up 0.3 s (z > -4). Only acts if the ringer was normal; only restores if you didn't change it meanwhile; the muted mark is saved (prefs "face_down")
-- [ ] 3.11 Shake = heavy glitch bars, she undoes her last action (closed app, pin, changed setting)
+- [ ] ~~3.11 Shake = heavy glitch bars, she undoes her last action~~ dropped by the user (2026-11-25): no shake-to-undo
 Then:
-- [ ] 3.12 Gesture settings screen (turn each gesture on/off, remap)
+- [x] 3.12 (2026-11-25, builds; not seen on phone; `data/Gestures.kt`, `ui/GestureScreen.kt`; user skipped the preview) Gesture settings screen, opened by chat `gestures` / `settings`: ON/OFF for all 10 gestures (on her: double-tap, hold, drag app, swipe; empty screen: letter, swipe up, double-tap, two down, two-finger hold; phone: face down). The 3 empty-screen triggers can be remapped to lock / flashlight / status scan / app list / week grid (`MainActivity.runGesture`). Saved in prefs "gestures", all on by default. Swiping her back in always works even if the swipe is off; face down off still restores sound if it was muted
 - [ ] 3.13 Chat commands: call contact, wifi/bluetooth settings, music pause/next, silent mode
 - [ ] 3.14 Live search in chatbox also shows contacts and settings
 

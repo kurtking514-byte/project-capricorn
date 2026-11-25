@@ -1,5 +1,8 @@
 package io.github.kurtking514_byte.capricorn.capri
 
+import io.github.kurtking514_byte.capricorn.data.Gesture
+import io.github.kurtking514_byte.capricorn.data.Gestures
+
 import android.content.Context
 import android.content.Intent
 import android.provider.AlarmClock
@@ -24,10 +27,10 @@ class CapriBrain(private val context: Context) {
         private set
 
     /**
-     * 3.9d/e: a job for MainActivity hidden in the last reply ("classes" = week grid, "askLocation" =
+     * 3.9d/e, 3.12: a job for MainActivity hidden in the last reply ("gestures" = settings screen) ("classes" = week grid, "askLocation" =
      * ask for rough location, "fetchWeather" = fetch and report). Returned once; she then wears a smirk.
      */
-    fun consumeRequest(): String? = mood.takeIf { it in setOf("classes", "askLocation", "fetchWeather") }?.also { mood = "smirk" }
+    fun consumeRequest(): String? = mood.takeIf { it in setOf("classes", "askLocation", "fetchWeather", "gestures") }?.also { mood = "smirk" }
 
     /** 3.9e: what she says about the weather. */
     fun weatherLine(w: Weather.Info): String {
@@ -73,7 +76,7 @@ class CapriBrain(private val context: Context) {
      */
     fun poke(again: () -> String): String {
         val now = android.os.SystemClock.uptimeMillis()
-        val double = pokeStreak == 1 && now - lastPoke < DOUBLE_TAP_MS
+        val double = pokeStreak == 1 && now - lastPoke < DOUBLE_TAP_MS && Gestures.on(Gesture.HER_DOUBLE_TAP)
         pokeStreak = if (now - lastPoke < POKE_WINDOW_MS) pokeStreak + 1 else 1
         lastPoke = now
         if (double) return again()
@@ -303,6 +306,11 @@ class CapriBrain(private val context: Context) {
             val w = Weather.cached(context)
             if (w != null && Weather.fresh(w)) return weatherLine(w)
             return "Checking the sky. Hold on.".also { mood = "fetchWeather" }
+        }
+
+        // 3.12: gesture settings
+        if (t in setOf("gestures", "gesture", "settings", "gesture settings")) {
+            return done(pick("Your controls. Don't break anything.", "Rewire me, then. Carefully."), "gestures")
         }
 
         // 3.9d: the week grid (opened by MainActivity.say)

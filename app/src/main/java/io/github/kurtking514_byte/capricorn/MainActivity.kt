@@ -42,6 +42,10 @@ import io.github.kurtking514_byte.capricorn.overlay.CapriOverlayService
 import io.github.kurtking514_byte.capricorn.ui.DRAWER_CLOSE_MS
 import io.github.kurtking514_byte.capricorn.ui.AppDrawer
 import io.github.kurtking514_byte.capricorn.ui.ClassGrid
+import io.github.kurtking514_byte.capricorn.ui.GestureScreen
+import io.github.kurtking514_byte.capricorn.data.GestureJob
+import io.github.kurtking514_byte.capricorn.data.Gesture
+import io.github.kurtking514_byte.capricorn.data.Gestures
 import io.github.kurtking514_byte.capricorn.capri.Weather
 import io.github.kurtking514_byte.capricorn.capri.FaceDown
 import android.Manifest
@@ -71,6 +75,7 @@ class MainActivity : ComponentActivity() {
     private var dockKeys by mutableStateOf<List<String>>(emptyList())
     private var launchCounts by mutableStateOf<Map<String, Int>>(emptyMap())
     private var drawerOpen by mutableStateOf(false)
+    private var gesturesOpen by mutableStateOf(false)              // 3.12 gesture settings
     private var classesOpen by mutableStateOf(false)               // 3.9d week grid
     private var showBoot by mutableStateOf(true)
     private var resumeTick by mutableIntStateOf(0)
@@ -92,6 +97,7 @@ class MainActivity : ComponentActivity() {
             return
         }
         when (brain.consumeRequest()) {
+            "gestures" -> gesturesOpen = true                                              // 3.12
             "classes" -> classesOpen = true                                                // 3.9d week grid
             "askLocation" -> askLocation.launch(Manifest.permission.ACCESS_COARSE_LOCATION) // 3.9e
             "fetchWeather" -> fetchWeather()
@@ -110,6 +116,25 @@ class MainActivity : ComponentActivity() {
     private fun fetchWeather() = Weather.refresh(this, force = true) { w ->
         say(if (w != null) brain.weatherLine(w) else brain.weatherFailed())
         if (w != null) StatusScan.update(PhoneStatus.read(this))
+    }
+
+    /** 3.12: a remappable gesture does whatever job it's set to (nothing if it's switched off). */
+    private fun runGesture(g: Gesture) {
+        if (!Gestures.on(g)) return
+        when (Gestures.job(g)) {
+            GestureJob.LOCK -> lockFromHome()
+            GestureJob.FLASHLIGHT -> say(brain.torch())
+            GestureJob.SCAN -> {
+                val st = PhoneStatus.read(this)
+                StatusScan.show(st)
+                // 3.9e: stale weather -> fetch quietly; the panel updates if it's still up
+                Weather.refresh(this) { if (it != null) StatusScan.update(PhoneStatus.read(this)) }
+                say(brain.scan(st))
+            }
+            GestureJob.APPS -> drawerOpen = true
+            GestureJob.WEEK -> classesOpen = true
+            null -> {}
+        }
     }
 
     private fun onHome() = !showBoot && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
@@ -161,6 +186,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Gestures.init(this)                        // 3.12: which gestures are on
         BatteryTracker.start(this)                 // 3.9b: learns the real drain for the battery estimate
         // Capri is always dark, so keep status/nav bar icons light even if the phone is in light mode.
         enableEdgeToEdge(
@@ -190,7 +216,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             CapriTheme {
                 // A launcher never "goes back" past home; back just closes the drawer.
-                BackHandler { if (classesOpen) classesOpen = false else drawerOpen = false }
+                BackHandler { if (gesturesOpen) gesturesOpen = false else if (classesOpen) classesOpen = false else drawerOpen = false }
 
                 val byKey = remember(apps) { apps.associateBy { it.key } }
                 val dockApps = remember(byKey, dockKeys) { dockKeys.mapNotNull { byKey[it] } }
@@ -230,15 +256,9 @@ class MainActivity : ComponentActivity() {
                         onGrabAction = ::grabAction,
                         letterPick = letterPick,
                         onLetter = ::onLetter,
-                        onDoubleTapEmpty = ::lockFromHome,
-                        onTwoFingerDown = { say(brain.torch()) },
-                        onTwoFingerHold = {
-                            val st = PhoneStatus.read(this@MainActivity)
-                            StatusScan.show(st)
-                            // 3.9e: stale weather -> fetch quietly; the panel updates if it's still up
-                            Weather.refresh(this@MainActivity) { if (it != null) StatusScan.update(PhoneStatus.read(this@MainActivity)) }
-                            say(brain.scan(st))
-                        },
+                        onDoubleTapEmpty = { runGesture(Gesture.DOUBLE_TAP) },
+                        onTwoFingerDown = { runGesture(Gesture.TWO_DOWN) },
+                        onTwoFingerHold = { runGesture(Gesture.TWO_HOLD) },
                         onPickLetterApp = {
                             letterPick = null
                             say(brain.letterPicked(it.label))
@@ -263,6 +283,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     if (classesOpen) ClassGrid(onClose = { classesOpen = false })
+                    if (gesturesOpen) GestureScreen(onClose = { gesturesOpen = false })
                     AnimatedVisibility(visible = showBoot, enter = EnterTransition.None, exit = fadeOut(tween(250))) {
                         BootOverlay(skin = skin, onDone = {
                             if (showBoot) {
@@ -295,6 +316,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         drawerOpen = false
         classesOpen = false
+        gesturesOpen = false
     }
 
     override fun onDestroy() {
@@ -320,6 +342,7 @@ class MainActivity : ComponentActivity() {
         launchCounts = prefs.launchCounts()
         drawerOpen = false
         classesOpen = false
+        gesturesOpen = false
         true
     } catch (e: Exception) {
         Toast.makeText(this, "Couldn't open ${app.label}", Toast.LENGTH_SHORT).show()
