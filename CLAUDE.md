@@ -154,7 +154,7 @@ Then:
 
 ### Phase 5 — Convenient extras (one feature per step)
 - [x] 5.1 (2026-11-25, approved + ported; builds; not seen on phone; `capri/Suggest.kt` (counts app opens from Usage events, cached 10 min per hour slot), `NowRow` + tap-to-open `SpeechBubble` in HomeScreen, `MainActivity.refreshNow` on every Home + after apps load, `CapriBrain.suggestApp`; `preview/suggest-lab.html`, https://claude.ai/artifact/5cfQhvjcjFUoDmMnkM7QXf) Smart suggestions (usage stats). User picks: NOW row of 4 apps above the chatbox (hidden while typing, skips dock apps, snaps with a glitch when picks change) + she sometimes names the top one on Home (max once per 30 min, only a clear favorite; bubble = tap to open); learns from Usage access (last 4 weeks); time of day ±1 h, weekdays and weekends apart
-- [ ] 5.2 Notification bubbles
+- [x] 5.2 (2026-11-25, builds; not seen on phone; user skipped the preview; `ui/NotifCards.kt` fed by `CapriNotifListener`, `NotifStack` in `CapriStage`, `MainActivity.openNotif`) Notification bubbles. User picks: cards show app + title (usually the sender), never the message text; up to 3 on her right (+N), new ones sit at the top edge for 83 ms then snap down beside her with a green/crimson glitch; tap = red hit + opens its own action (else the app), auto-cancel ones clear; swipe sideways 60 dp = 2 glitch steps, then dismissed on the phone too. Needs Notification access. May overlap her right arm: tune width/position after seeing it
 - [ ] 5.3 Vault (hidden apps)
 - [ ] 5.4 Focus mode
 - [ ] 5.5 Widgets

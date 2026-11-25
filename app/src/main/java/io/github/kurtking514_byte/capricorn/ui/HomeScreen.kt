@@ -120,6 +120,7 @@ fun HomeScreen(
     nowApps: List<AppEntry> = emptyList(),          // 5.1: apps you usually open around now
     bubbleTap: Boolean = false,                     // 5.1: her line names an app; tap the bubble to open it
     onBubbleTap: () -> Unit = {},
+    onOpenNotif: (NotifCards.Card) -> Unit = {},    // 5.2: tap a notification card beside her
 ) {
     val openDrawer by rememberUpdatedState(onOpenDrawer)
     val keyboard = LocalSoftwareKeyboardController.current
@@ -238,6 +239,7 @@ fun HomeScreen(
                 onPoke = pokeOrListen,
                 bubbleTap = bubbleTap,
                 onBubbleTap = onBubbleTap,
+                onOpenNotif = onOpenNotif,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -538,6 +540,7 @@ private fun CapriStage(
     onPoke: (held: Boolean) -> Unit,
     bubbleTap: Boolean = false,
     onBubbleTap: () -> Unit = {},
+    onOpenNotif: (NotifCards.Card) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val poke by rememberUpdatedState(onPoke)
@@ -596,6 +599,15 @@ private fun CapriStage(
                 )
             }
         }
+
+        // 5.2: notification cards she pulled in, on her right (hidden during the boot like she is)
+        NotifStack(
+            onOpen = onOpenNotif,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxWidth(0.42f)
+                .graphicsLayer { alpha = enter() },
+        )
 
         val bubbleY by animateFloatAsState(
             targetValue = (headTop - bubbleHeight - gap).coerceAtLeast(0f),

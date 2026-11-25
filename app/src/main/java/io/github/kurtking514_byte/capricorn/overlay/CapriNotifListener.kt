@@ -5,10 +5,12 @@ import android.content.Context
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import androidx.core.app.NotificationManagerCompat
+import io.github.kurtking514_byte.capricorn.ui.NotifCards
 
 /**
  * C5: tells home Capri when a new notification arrives, so she can react to it.
- * Only the sending app's package name is passed on; the notification's text is never read.
+ * 5.2: also keeps the notification cards beside her up to date ([NotifCards]): app, title (usually
+ * the sender) and its open action. The message text is never read.
  * The user switches this on in Settings > Notification access (chat command "notifs").
  */
 class CapriNotifListener : NotificationListenerService() {
@@ -16,11 +18,25 @@ class CapriNotifListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName == packageName || sbn.isOngoing) return
         if (sbn.notification.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
+        NotifCards.post(this, sbn, fresh = true)
         onNew?.invoke(sbn.packageName)
     }
 
-    override fun onListenerConnected() { instance = this }
-    override fun onListenerDisconnected() { if (instance === this) instance = null }
+    override fun onNotificationRemoved(sbn: StatusBarNotification) {
+        NotifCards.remove(sbn.key)
+    }
+
+    override fun onListenerConnected() {
+        instance = this
+        NotifCards.cancel = { key -> try { cancelNotification(key) } catch (e: Exception) { } }
+        NotifCards.load(this, try { activeNotifications } catch (e: Exception) { null })
+    }
+
+    override fun onListenerDisconnected() {
+        if (instance === this) instance = null
+        NotifCards.cancel = null
+        NotifCards.clear()
+    }
 
     companion object {
         /** The running listener (only while Notification access is on). */

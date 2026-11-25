@@ -74,6 +74,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import io.github.kurtking514_byte.capricorn.capri.Suggest
+import io.github.kurtking514_byte.capricorn.ui.NotifCards
+import android.app.ActivityOptions
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -218,6 +220,22 @@ class MainActivity : ComponentActivity() {
                 lastNamed = now
             }
         }
+    }
+
+    /** 5.2: tap a notification card: red hit, then it opens (its own action, else the app itself). */
+    private fun openNotif(c: NotifCards.Card) {
+        commandId++
+        window.decorView.postDelayed({
+            val pi = c.intent
+            val ok = pi != null && try {
+                val opts = if (Build.VERSION.SDK_INT >= 34) ActivityOptions.makeBasic()
+                    .setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED).toBundle() else null
+                pi.send(this, 0, null, null, null, null, opts)
+                true
+            } catch (e: Exception) { false }
+            if (!ok) packageManager.getLaunchIntentForPackage(c.pkg)?.let { try { startActivity(it) } catch (e: Exception) { } }
+            if (c.autoCancel) NotifCards.dismiss(c.key)
+        }, 180)
     }
 
     private fun fetchWeather() = Weather.refresh(this, force = true) { w ->
@@ -382,6 +400,7 @@ class MainActivity : ComponentActivity() {
                             launchSoon(it)
                         },
                         nowApps = nowApps.filter { it.key !in dockSet },
+                        onOpenNotif = ::openNotif,
                         bubbleTap = bubbleApp != null,
                         onBubbleTap = {
                             bubbleApp?.let { app ->
