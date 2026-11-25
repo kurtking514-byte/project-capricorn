@@ -197,8 +197,7 @@ fun HomeScreen(
 
     Box(
         Modifier
-            .fillMaxSize()
-            .background(CapriColors.Black)
+            .fillMaxSize()                               // 4.6a: no background, the wallpaper shows through
             .trackGaze()                                 // she looks toward wherever you touch
             // straight swipe up = app list; any other one-finger stroke on the empty screen = a letter (3.5)
             .homeStrokes(onDrawer = { openDrawer() }, onLetter = onLetter, onDoubleTap = onDoubleTapEmpty,
