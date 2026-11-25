@@ -51,6 +51,14 @@
   .item .ln { font: 11px/1.35 var(--mono); color: var(--dim); margin-top: 3px; }
   .chip { flex: none; width: 70px; padding: 8px 0; text-align: center; font: 400 12px/1 var(--russo); border: 1.5px solid var(--pink); background: #000; color: var(--text); cursor: pointer; }
   .chip.on { border-color: var(--green); color: var(--green); cursor: default; }
+  .chip.ask { border-color: var(--acid); color: var(--acid); }
+  .sec { font: 600 10px/1 var(--mono); letter-spacing: .18em; color: var(--crimson); padding: 12px 0 6px; border-bottom: 2px solid var(--crimson); }
+  .sec:first-child { padding-top: 2px; }
+  .sys .tg { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+  .sys .tg i { width: 30px; height: 16px; border-radius: 8px; background: #4A5A62; position: relative; cursor: pointer; }
+  .sys .tg i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #E6F4F4; }
+  .sys .tg i.on { background: #2E7DFF; }
+  .sys .tg i.on::after { left: 16px; }
   .chip.glitch { animation: g 83ms steps(1) 2; }
   @keyframes g { 0% { box-shadow: -4px 0 0 var(--green), 4px 0 0 var(--pink); transform: translateX(2px); } 50% { box-shadow: 4px 0 0 var(--green); transform: translateX(-2px); } }
   .bottom { display: flex; gap: 6px; }
@@ -78,7 +86,7 @@
 <div class="wrap">
   <header>
     <h1>Capri <span>setup</span></h1>
-    <div class="step">Step 4.4 · permissions, in her voice</div>
+    <div class="step">Steps 4.4 + 4.5 · permissions + battery, in her voice</div>
   </header>
 
   <div class="phone" id="phone">
@@ -101,8 +109,11 @@
     </div>
     <p class="note"><b>What it is:</b> one SETUP screen with every permission Capri can use. Tap a crimson <b>ALLOW</b>: in the app that opens Android's own page or pop-up (simulated here by the grey box); when you come back it snaps to a green <b>ON</b> with a short glitch, a segment in the bar lights up, and she reacts in the box at the top.</p>
     <p class="note"><b>When:</b> it opens once after the very first boot, and any time you type <b>setup</b>. LATER and ✕ just close it; nothing nags you afterwards.
-      Only <b>HOME APP</b> is marked NEEDED; everything else is optional and the feature just stays off. When all 7 are on, she says so and DONE turns into the only button.</p>
-    <p class="note"><b>Not here:</b> the Realme battery / auto-launch guide is step 4.5.</p>
+      Only <b>HOME APP</b> is marked NEEDED; everything else is optional and the feature just stays off. When all 10 are on, she says so and DONE turns into the only button.</p>
+    <p class="note"><b>New, step 4.5: BATTERY.</b> Three rows at the bottom so Realme's battery cleaner leaves her alone (mini Capri, face-down silent and notification reactions run in the background).
+      <b>Battery saver</b>: Android's own pop-up; it turns ON by itself.
+      <b>Auto launch</b>: opens Capri's app info → Battery usage (the grey box); flip both switches, come back, and the chip turns into a yellow <b>DONE?</b>. Tap it to mark it, since Realme doesn't tell Capri.
+      <b>Lock in recents</b>: nothing opens; she tells you how, and the chip turns into <b>DONE?</b> for you to tap.</p>
   </div>
 </div>
 
@@ -122,9 +133,17 @@
       sys: ["Allow Capri to access this device's approximate location?", "Only while using the app"], yes: "Sky, located. I'll warn you about rain." },
     { id: "contacts", nm: "Contacts", ln: "So \"call mom\" knows who mom is.",
       sys: ["Allow Capri to access your contacts?", ""], yes: "Got your people. I won't judge. Much." },
+    { id: "batt", group: "BATTERY", nm: "Battery saver", ln: "Tell Android to stop putting me to sleep.",
+      sys: ["Let app always run in background?", "Allowing Capri to always run in the background may reduce battery life."], yes: "Unkillable. Mostly." },
+    { id: "auto", group: "BATTERY", self: true, nm: "Auto launch", ln: "Realme's own switches. Battery usage → both on.",
+      how: "Battery usage → \"Allow auto launch\" and \"Allow background activity\". Both on.",
+      back: "Flipped both? Tap DONE? so I know. Realme won't tell me.", yes: "Auto launch on. I'll be back. Always." },
+    { id: "lock", group: "BATTERY", self: true, nm: "Lock in recents", ln: "Recent apps → ⋮ on my card → Lock.",
+      how: "Open recent apps, tap the ⋮ on my card, pick Lock. Then tap DONE?.",
+      yes: "Locked in. Clear-all can't touch me now." },
   ];
   const $ = id => document.getElementById(id);
-  const on = new Set();
+  const on = new Set(), asked = new Set();   // asked = a "you tick it" row whose page / steps were shown
   const INTRO = ["Quick setup. Tap what you want me to do. Skip the rest, I'll live.", "Permissions. Boring, I know. Tap, tap, done."];
   const LATER = ["Later. Sure. Say \"setup\" when you're ready.", "Fine. Half of me is better than none."];
   let pending = null;
@@ -132,24 +151,45 @@
   function render() {
     $("count").textContent = `${on.size} / ${ITEMS.length}`;
     $("segs").innerHTML = ITEMS.map((_, i) => `<i class="${i < on.size ? "on" : ""}"></i>`).join("");
-    $("list").innerHTML = ITEMS.map(it => `
+    let group = null;
+    $("list").innerHTML = ITEMS.map(it => {
+      const g = it.group || "PERMISSIONS", head = g !== group ? `<div class="sec">${g}</div>` : ""; group = g;
+      const st = on.has(it.id) ? "on" : asked.has(it.id) ? "ask" : "";
+      return `${head}
       <div class="item">
         <div class="txt"><div class="nm">${it.nm}${it.need ? "<em>NEEDED</em>" : ""}</div><div class="ln">${it.ln}</div></div>
-        <button class="chip ${on.has(it.id) ? "on" : ""}" data-id="${it.id}" ${on.has(it.id) ? "disabled" : ""}>${on.has(it.id) ? "ON" : "ALLOW"}</button>
-      </div>`).join("");
+        <button class="chip ${st}" data-id="${it.id}" ${st === "on" ? "disabled" : ""}>${st === "on" ? "ON" : st === "ask" ? "DONE?" : "ALLOW"}</button>
+      </div>`;
+    }).join("");
     $("later").hidden = on.size === ITEMS.length;
-    $("list").querySelectorAll(".chip:not(.on)").forEach(b => b.addEventListener("click", () => ask(b.dataset.id)));
+    $("list").querySelectorAll(".chip:not(.on)").forEach(b => b.addEventListener("click", () =>
+      asked.has(b.dataset.id) ? turnOn(ITEMS.find(i => i.id === b.dataset.id)) : ask(b.dataset.id)));
   }
   function say(t) { $("line").textContent = t; }
+  function turnOn(it) {
+    on.add(it.id); asked.delete(it.id); render();
+    document.querySelector(`.chip[data-id="${it.id}"]`).classList.add("glitch");
+    say(on.size === ITEMS.length ? "All of me, unlocked. You won't regret it. Probably." : it.yes);
+  }
   function ask(id) {
     pending = ITEMS.find(i => i.id === id);
-    $("sysT").textContent = pending.sys[0]; $("sysB").textContent = pending.sys[1]; $("sys").hidden = false;
+    if (pending.id === "lock") { asked.add("lock"); say(pending.how); render(); pending = null; return; }
+    if (pending.id === "auto") {
+      say(pending.how);
+      $("sysT").textContent = "Capri › Battery usage";
+      $("sysB").innerHTML = `<div class="tg">Allow auto launch <i></i></div><div class="tg">Allow background activity <i></i></div>`;
+      $("sysB").querySelectorAll("i").forEach(t => t.addEventListener("click", () => t.classList.toggle("on")));
+      $("sysNo").hidden = true; $("sysYes").textContent = "← BACK TO CAPRI";
+    } else {
+      $("sysT").textContent = pending.sys[0]; $("sysB").textContent = pending.sys[1];
+      $("sysNo").hidden = false; $("sysYes").textContent = "ALLOW";
+    }
+    $("sys").hidden = false;
   }
   $("sysYes").addEventListener("click", () => {
     $("sys").hidden = true; if (!pending) return;
-    on.add(pending.id); render();
-    const chip = document.querySelector(`.chip[data-id="${pending.id}"]`); chip.classList.add("glitch");
-    say(on.size === ITEMS.length ? "All of me, unlocked. You won't regret it. Probably." : pending.yes);
+    if (pending.self) { asked.add(pending.id); render(); say(pending.back); }
+    else turnOn(pending);
     pending = null;
   });
   $("sysNo").addEventListener("click", () => { $("sys").hidden = true; pending = null; say("Changed your mind? Typical."); });
@@ -159,6 +199,6 @@
   $("done").addEventListener("click", () => close(on.size === ITEMS.length ? "Fully loaded. Let's go." : "Done for now. Say \"setup\" if you want the rest."));
   const open = () => { $("setup").hidden = false; say(INTRO[Math.floor(Math.random() * INTRO.length)]); render(); };
   $("first").addEventListener("click", open);
-  $("reset").addEventListener("click", () => { on.clear(); open(); });
+  $("reset").addEventListener("click", () => { on.clear(); asked.clear(); open(); });
   open();
 </script>
