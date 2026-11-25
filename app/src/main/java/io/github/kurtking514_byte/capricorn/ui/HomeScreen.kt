@@ -117,6 +117,9 @@ fun HomeScreen(
     onDoubleTapEmpty: () -> Unit,                   // 3.6: lock
     onTwoFingerDown: () -> Unit,                    // 3.7: flashlight
     onTwoFingerHold: () -> Unit,                    // 3.9a: status scan
+    nowApps: List<AppEntry> = emptyList(),          // 5.1: apps you usually open around now
+    bubbleTap: Boolean = false,                     // 5.1: her line names an app; tap the bubble to open it
+    onBubbleTap: () -> Unit = {},
 ) {
     val openDrawer by rememberUpdatedState(onOpenDrawer)
     val keyboard = LocalSoftwareKeyboardController.current
@@ -233,6 +236,8 @@ fun HomeScreen(
                 enter = { if (BootDock.active) 0f else enter.value.coerceIn(0f, 1f) },   // 4.6d: the boot draws her
                 pop = { pop.value },
                 onPoke = pokeOrListen,
+                bubbleTap = bubbleTap,
+                onBubbleTap = onBubbleTap,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -321,6 +326,11 @@ fun HomeScreen(
                         )
                     }
                 }
+            } else if (nowApps.isNotEmpty() && !typing) {
+                NowRow(
+                    nowApps, dockKeys, onLaunch, onToggleDock, onAppInfo,
+                    Modifier.graphicsLayer { alpha = if (BootDock.active) 0f else enter.value.coerceIn(0f, 1f) },
+                )
             }
 
             OutlinedTextField(
@@ -526,6 +536,8 @@ private fun CapriStage(
     enter: () -> Float,
     pop: () -> Float,
     onPoke: (held: Boolean) -> Unit,
+    bubbleTap: Boolean = false,
+    onBubbleTap: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val poke by rememberUpdatedState(onPoke)
@@ -592,6 +604,8 @@ private fun CapriStage(
         )
         SpeechBubble(
             text = text,
+            tap = bubbleTap,
+            onTap = onBubbleTap,
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth(0.92f)
@@ -608,11 +622,13 @@ private fun CapriStage(
 
 /** What Capri is saying: a flat cut-corner bubble with a small tail pointing down at her. */
 @Composable
-private fun SpeechBubble(text: String, modifier: Modifier = Modifier) {
+private fun SpeechBubble(text: String, modifier: Modifier = Modifier, tap: Boolean = false, onTap: () -> Unit = {}) {
     val shape = CutCornerShape(topEnd = 12.dp, bottomStart = 12.dp)
+    val edge = if (tap) CapriColors.Acid else Psyche.accent       // 5.1: yellow edge = tap me
     Column(
         modifier
             .padding(bottom = 9.dp)
+            .then(if (tap) Modifier.clickable(onClick = onTap) else Modifier)
             .drawBehind {
                 // tail
                 val cx = size.width / 2f
@@ -621,10 +637,10 @@ private fun SpeechBubble(text: String, modifier: Modifier = Modifier) {
                     moveTo(cx - half, size.height - 1f); lineTo(cx + half, size.height - 1f); lineTo(cx, size.height + half); close()
                 }
                 drawPath(tail, CapriColors.Panel.copy(alpha = Panels.alpha))
-                drawLine(Psyche.accent, Offset(cx - half, size.height), Offset(cx, size.height + half), strokeWidth = 1.dp.toPx())
-                drawLine(Psyche.accent, Offset(cx + half, size.height), Offset(cx, size.height + half), strokeWidth = 1.dp.toPx())
+                drawLine(edge, Offset(cx - half, size.height), Offset(cx, size.height + half), strokeWidth = 1.dp.toPx())
+                drawLine(edge, Offset(cx + half, size.height), Offset(cx, size.height + half), strokeWidth = 1.dp.toPx())
             }
-            .border(1.dp, Psyche.accent, shape)
+            .border(1.dp, edge, shape)
             .background(CapriColors.Panel.copy(alpha = Panels.alpha), shape)                  // 4.6b
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
@@ -642,6 +658,64 @@ private fun SpeechBubble(text: String, modifier: Modifier = Modifier) {
             fontWeight = FontWeight.SemiBold,
             minLines = 2,
         )
+        if (tap) Text(
+            "TAP TO OPEN", color = CapriColors.Acid, fontSize = 9.sp, letterSpacing = 1.5.sp,
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, modifier = Modifier.padding(top = 2.dp),
+        )
+    }
+}
+
+/** 5.1: apps you usually open around now (Suggest), above the chatbox; snaps with a short glitch when they change. */
+@Composable
+private fun NowRow(
+    apps: List<AppEntry>,
+    dockKeys: Set<String>,
+    onLaunch: (AppEntry) -> Unit,
+    onToggleDock: (AppEntry) -> Unit,
+    onAppInfo: (AppEntry) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val key = apps.joinToString { it.key }
+    var seen by remember { mutableStateOf(key) }
+    var step by remember { mutableIntStateOf(-1) }
+    LaunchedEffect(key) {
+        if (key == seen) return@LaunchedEffect
+        seen = key
+        step = 0; delay(83); step = 1; delay(83); step = -1
+    }
+    Row(
+        modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp)
+            .offset(x = when (step) { 0 -> 3.dp; 1 -> (-2).dp; else -> 0.dp })
+            .drawBehind {
+                val d = 4.dp.toPx()
+                if (step == 0) {
+                    drawRect(GLITCH_GREEN, Offset(-d, 0f), size)
+                    drawRect(GLITCH_CRIMSON, Offset(d, 0f), size)
+                }
+            }
+            .background(CapriColors.Panel.copy(alpha = Panels.alpha), CutCornerShape(topEnd = 12.dp, bottomStart = 12.dp))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "NOW", color = CapriColors.Acid, fontSize = 9.sp, letterSpacing = 2.sp,
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, modifier = Modifier.padding(end = 4.dp),
+        )
+        apps.forEach { app ->
+            AppItem(
+                app = app,
+                inDock = app.key in dockKeys,
+                showLabel = true,
+                onLaunch = onLaunch,
+                onToggleDock = onToggleDock,
+                onAppInfo = onAppInfo,
+                modifier = Modifier.weight(1f),
+                draggable = true,
+            )
+        }
+        repeat(4 - apps.size) { Spacer(Modifier.weight(1f)) }
     }
 }
 

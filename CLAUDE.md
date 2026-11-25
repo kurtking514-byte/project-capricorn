@@ -153,7 +153,7 @@ Then:
   - Don't read the wallpaper image with `WallpaperManager.getDrawable()`: it needs storage permission on new Android and isn't needed
 
 ### Phase 5 — Convenient extras (one feature per step)
-- [ ] 5.1 (preview built 2026-11-25, waiting for the user's OK; `preview/suggest-lab.html`, https://claude.ai/artifact/5cfQhvjcjFUoDmMnkM7QXf) Smart suggestions (usage stats). User picks: NOW row of 4 apps above the chatbox (hidden while typing, skips dock apps, snaps with a glitch when picks change) + she sometimes names the top one on Home (max once per 30 min, only a clear favorite; bubble = tap to open); learns from Usage access (last 4 weeks); time of day ±1 h, weekdays and weekends apart
+- [x] 5.1 (2026-11-25, approved + ported; builds; not seen on phone; `capri/Suggest.kt` (counts app opens from Usage events, cached 10 min per hour slot), `NowRow` + tap-to-open `SpeechBubble` in HomeScreen, `MainActivity.refreshNow` on every Home + after apps load, `CapriBrain.suggestApp`; `preview/suggest-lab.html`, https://claude.ai/artifact/5cfQhvjcjFUoDmMnkM7QXf) Smart suggestions (usage stats). User picks: NOW row of 4 apps above the chatbox (hidden while typing, skips dock apps, snaps with a glitch when picks change) + she sometimes names the top one on Home (max once per 30 min, only a clear favorite; bubble = tap to open); learns from Usage access (last 4 weeks); time of day ±1 h, weekdays and weekends apart
 - [ ] 5.2 Notification bubbles
 - [ ] 5.3 Vault (hidden apps)
 - [ ] 5.4 Focus mode

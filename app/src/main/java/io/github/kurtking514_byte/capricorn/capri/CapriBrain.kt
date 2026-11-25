@@ -93,6 +93,17 @@ class CapriBrain(private val context: Context) {
     fun settingOpened(title: String): String =
         done(pick("$title. Don't break anything.", "There's your $title. Fiddle away.", "$title, as ordered."), "smirk")
 
+    /** 5.1: she names the app you usually open around now (the bubble becomes tap-to-open). */
+    fun suggestApp(label: String): String {
+        val h = java.time.LocalTime.now().hour
+        val time = "${if (h % 12 == 0) 12 else h % 12} ${if (h < 12) "am" else "pm"}"
+        return pick(
+            "$label? It's $time. You always do.",
+            "Let me guess. $label. Predictable.",
+            "$label o'clock. Go on, tap me.",
+        ).also { mood = "smirk" }
+    }
+
     /** 4.4: her line on the home screen when the setup screen closes. */
     fun setupClosed(on: Int, total: Int, later: Boolean): String = when {
         on >= total -> pick("Fully loaded. Let's go.", "All of me, unlocked. Try to keep up.").also { mood = "smug" }

@@ -71,6 +71,9 @@ import io.github.kurtking514_byte.capricorn.ui.CapriTime
 import io.github.kurtking514_byte.capricorn.ui.HomeScreen
 import io.github.kurtking514_byte.capricorn.ui.theme.CapriTheme
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import io.github.kurtking514_byte.capricorn.capri.Suggest
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -86,6 +89,9 @@ class MainActivity : ComponentActivity() {
     private var drawerOpen by mutableStateOf(false)
     private var gesturesOpen by mutableStateOf(false)              // 3.12 gesture settings
     private var setupOpen by mutableStateOf(false)                 // 4.4 setup checklist
+    private var nowApps by mutableStateOf<List<AppEntry>>(emptyList())   // 5.1 suggestions row
+    private var bubbleApp by mutableStateOf<AppEntry?>(null)             // 5.1 her bubble opens this app
+    private var lastNamed = 0L
     private var classesOpen by mutableStateOf(false)               // 3.9d week grid
     private var showBoot by mutableStateOf(true)
     private var resumeTick by mutableIntStateOf(0)
@@ -120,6 +126,7 @@ class MainActivity : ComponentActivity() {
             "askLocation" -> askLocation.launch(Manifest.permission.ACCESS_COARSE_LOCATION) // 3.9e
             "fetchWeather" -> fetchWeather()
         }
+        bubbleApp = null                          // 5.1: any new line ends a tap-to-open suggestion
         capriLine = line
         mood = brain.mood
         lineId++
@@ -189,6 +196,28 @@ class MainActivity : ComponentActivity() {
         setupOpen = false
         val total = SetupItem.entries.size
         say(brain.setupClosed(SetupItem.entries.count { it.isOn(this) }, total, later))
+    }
+
+    /**
+     * 5.1: re-reads which apps you usually open around now (cached per hour, off the main thread).
+     * With [name], she may also say the top one: only on the home screen, only a clear favorite,
+     * at most once every 30 min.
+     */
+    private fun refreshNow(name: Boolean) {
+        lifecycleScope.launch {
+            val picks = withContext(Dispatchers.IO) { Suggest.rank(this@MainActivity) }
+            val docked = dockKeys.map { it.substringBefore('/') }.toSet()
+            val byPkg = apps.groupBy { it.packageName }
+            val list = picks.filter { it.pkg !in docked && it.pkg in byPkg }
+            nowApps = list.mapNotNull { byPkg[it.pkg]?.firstOrNull() }.take(4)
+            val now = System.currentTimeMillis()
+            if (!name || CapriAway.away || (lastNamed != 0L && now - lastNamed < NAME_GAP_MS) || !Suggest.clear(list)) return@launch
+            val app = byPkg[list[0].pkg]?.firstOrNull() ?: return@launch
+            if (react { brain.suggestApp(app.label) }) {
+                bubbleApp = app
+                lastNamed = now
+            }
+        }
     }
 
     private fun fetchWeather() = Weather.refresh(this, force = true) { w ->
@@ -352,6 +381,15 @@ class MainActivity : ComponentActivity() {
                             say(brain.letterPicked(it.label))
                             launchSoon(it)
                         },
+                        nowApps = nowApps.filter { it.key !in dockSet },
+                        bubbleTap = bubbleApp != null,
+                        onBubbleTap = {
+                            bubbleApp?.let { app ->
+                                bubbleApp = null
+                                commandId++                          // C3 red hit, then it opens
+                                launchSoon(app)
+                            }
+                        },
                     )
                     AnimatedVisibility(
                         visible = drawerOpen,
@@ -396,6 +434,7 @@ class MainActivity : ComponentActivity() {
         FaceDown.watch(this, "home", true)
         Weather.refresh(this)                     // 3.9e: keep the weather fresh (skips if not allowed / still fresh)
         CapriNotifListener.onNew = { pkg -> runOnUiThread { onNotification(pkg) } }
+        refreshNow(name = true)                  // 5.1: NOW row, and maybe she names the top pick
     }
 
     override fun onPause() {
@@ -420,7 +459,7 @@ class MainActivity : ComponentActivity() {
 
     private fun reloadApps() {
         loadJob?.cancel()
-        loadJob = lifecycleScope.launch { allApps = repo.loadApps() }
+        loadJob = lifecycleScope.launch { allApps = repo.loadApps(); refreshNow(false) }
     }
 
     /** Opens an app from chat a moment later, so the red hit (C3) shows before the app covers it. */
@@ -554,4 +593,5 @@ private const val LOCK_AFTER_MS = 320L
 private const val LOW_BATTERY = 15
 
 /** C5: at most one notification reaction this often. */
+private const val NAME_GAP_MS = 30 * 60_000L   // 5.1: she names a suggested app at most every 30 min
 private const val NOTIF_GAP_MS = 10_000L
