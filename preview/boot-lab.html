@@ -72,12 +72,12 @@
 <div class="wrap">
   <header>
     <h1>Capri <span>boot</span></h1>
-    <div class="step">Step B2 · lightning</div>
+    <div class="step">Step 4.6d · ends on your wallpaper</div>
   </header>
 
   <div class="phone" id="phone">
     <canvas id="c"></canvas>
-    <div class="rest" id="rest" hidden>Boot ends here · home screen</div>
+    <div class="rest" id="rest" hidden>Boot ends here · snaps to the home screen (no fade)</div>
   </div>
 
   <div class="controls">
@@ -92,7 +92,8 @@
     <ol id="list"></ol>
   </div>
 
-  <p class="note">Every replay is a new random pattern: <b>3–5 hard crimson hits</b> at uneven times, each a different shape (full screen, slash, band, half screen). Somewhere in the middle she <b>glitches through</b> for a split second: torn into slices with a crimson split, then gone. After the last hit she <b>glitches in</b>, raises her hand, and <b>3–4 red lightning bolts at once strike down from the top of the screen</b> onto each pinned app, app by app in a random order. Each strike flashes the spot crimson, the app pops in and glitches (torn slices, crimson split) before it settles. Flat color, no glow, no confetti, no body zooming. The figure is a plain stand-in; the app uses your skin.</p>
+  <p class="note"><b>New in 4.6d:</b> the boot now ends on <b>your wallpaper</b> (a stand-in sky here). The red flashes still play on black. Right after the last flash, the <b>black glitches away</b> in 3 quick steps (0.25 s): thin black strips drop out with green and crimson bars on the torn edges, while she glitches in on top. When her hand goes up, the lightning strikes the <b>clock</b> (on its see-through panel), the chatbox and every pinned app <b>at the same moment</b>. At the end the boot <b>snaps</b> off with no fade, since everything is already in place.</p>
+  <p class="note">This page uses an old stand-in for her and slower timing; in the app the boot stays about 1 s and uses your skin. Use <b>Slow ×4</b> to see the black tear away.</p>
 </div>
 
 <script>
@@ -131,6 +132,48 @@
   const dockSlot = i => ({ x: W * (.12 + i * .19), y: H * .935, s: W * .12 });
   const RAISE = .3;                      // first part: her arm swings up overhead
 
+  // 4.6d: a stand-in wallpaper (flat shapes; the app shows your real one)
+  function drawWall() {
+    const bands = [["#5DB7F2", 0], ["#8ACDF7", .30], ["#C7E8FB", .52], ["#3E8E4F", .70], ["#2B6B3A", .82]];
+    bands.forEach(([c, y], i) => { ctx.fillStyle = c; ctx.fillRect(0, H * y, W, H * ((bands[i + 1]?.[1] ?? 1) - y)); });
+    ctx.fillStyle = "#FFD25A"; ctx.beginPath(); ctx.arc(W * .78, H * .2, W * .13, 0, Math.PI * 2); ctx.fill();
+  }
+  // 4.6d: the black glitches away in 3 steps of 83 ms while she glitches in. Each step keeps fewer
+  // black strips, with green + crimson bars on some of the torn edges.
+  const TEAR_MS = 250, TEAR_KEEP = [.6, .3, .1];
+  function drawTear(ms) {
+    const step = Math.floor(ms / 83); if (step > 2) return;
+    for (const b of seq.tear[step]) {
+      if (b.keep) { ctx.fillStyle = INK; ctx.fillRect(0, b.y * H, W, b.h * H); }
+      else if (b.bar) { ctx.fillStyle = b.bar; ctx.fillRect(b.x * W, b.y * H, b.w * W, Math.max(2, b.h * H * .35)); }
+    }
+  }
+  // 4.6d: the clock (on its see-through panel) is struck together with the chatbox and the apps
+  const clockSlot = () => ({ x: W * .06, y: H * .07, w: W * .88, h: H * .1 });
+  function drawClock(since) {
+    const c = clockSlot();
+    if (since < 40) { ctx.fillStyle = CRIMSON; ctx.fillRect(c.x, c.y, c.w, c.h); return; }
+    const paint = dx => {
+      ctx.fillStyle = "rgba(12,26,34,.65)"; ctx.fillRect(c.x + dx, c.y, c.w, c.h);
+      ctx.font = `italic 900 ${Math.round(c.h * .62)}px "Exo 2", sans-serif`; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+      const tx = c.x + dx + c.w * .05, ty = c.y + c.h * .82;
+      ctx.fillStyle = CRIMSON; ctx.fillText("9:41", tx - 3, ty + 1);
+      ctx.fillStyle = EDGE; ctx.fillText("9:41", tx + 3, ty - 1);
+      ctx.fillStyle = "#E6F4F4"; ctx.fillText("9:41", tx, ty);
+      ctx.font = `600 ${Math.round(c.h * .14)}px monospace`; ctx.fillStyle = "#F4ED75"; ctx.fillText("// LOCAL TIME", tx, c.y + c.h * .2);
+    };
+    const g = since - 40;
+    if (g >= 160) { paint(0); return; }
+    const pts = seq.bolts[5][0].pts, phase = g < 80 ? 0 : 3, bands = 5;
+    for (let b = 0; b < bands; b++) {
+      const r = pts[(b + phase) % pts.length], dx = Math.abs(r) > .4 ? r * c.w * .08 * (1 - g / 160) : 0;
+      ctx.save(); ctx.beginPath(); ctx.rect(0, c.y + b * c.h / bands, W, c.h / bands + .5); ctx.clip();
+      ctx.fillStyle = CRIMSON; ctx.fillRect(c.x + dx + 6, c.y, c.w, c.h);
+      if (r > -.6) paint(dx);
+      ctx.restore();
+    }
+  }
+
   // Stand-in, drawn live. k = 0..1 through the reach. The arm keeps its length and only rotates.
   function drawReach(k) {
     const u = H * .5, top = H * .42, cx = W / 2, lw = 2;
@@ -156,6 +199,18 @@
   // Lightning strikes down from the top of the screen onto each dock slot, in a random order.
   // Each strike: jagged crimson bolt, the slot flashes crimson, then the app tile pops in.
   function drawDock(k) {
+    const at0 = seq.strikes[0].k;
+    if (k >= at0) {                                     // 4.6d: the clock is struck at the same moment
+      const since = (k - at0) * ARRIVE_REACH, c = clockSlot();
+      for (const b of seq.bolts[5]) {
+        const bs = since - b.d; if (bs < 0 || bs >= 80) continue;
+        const tx = c.x + c.w * (.25 + .5 * (b.sx + .4) / .8), x0 = tx + b.sx * W * .3;
+        ctx.beginPath(); ctx.moveTo(x0, 0);
+        for (let j = 1; j < b.pts.length; j++) { const f = j / b.pts.length; ctx.lineTo(lerp(x0, tx, f) + b.pts[j] * W * .03 * (1 - f), lerp(0, c.y, f)); }
+        ctx.lineTo(tx, c.y); ctx.lineWidth = bs < 40 ? 5 : 3; ctx.strokeStyle = CRIMSON; ctx.lineJoin = "miter"; ctx.stroke();
+      }
+      drawClock(since);
+    }
     seq.strikes.forEach(({ i, k: at }) => {
       if (k < at) return;
       const d = dockSlot(i), letter = DOCK[i], since = (k - at) * ARRIVE_REACH, ty = d.y - d.s;
@@ -255,13 +310,23 @@
     if (!hits.some(h => h.shape === "full")) { const h = hits[Math.random() < .5 ? 0 : n - 1]; h.shape = "full"; h.p = params("full"); }
     const flashEnd = t + 120;
     // 3–4 bolts per app, each from a different point at the top, landing within ~50 ms of each other
-    const bolts = Array.from({ length: 5 }, () => Array.from({ length: 3 + Math.floor(Math.random() * 2) }, () => ({
+    const bolts = Array.from({ length: 6 }, () => Array.from({ length: 3 + Math.floor(Math.random() * 2) }, () => ({
       sx: rnd(-.4, .4), d: rnd(0, 50), pts: Array.from({ length: 8 }, () => rnd(-1, 1)),
     })));
     const order = [0, 1, 2, 3, 4].sort(() => Math.random() - .5);
-    let sk = RAISE + .06;
-    const strikes = order.map(i => { const s = { i, k: sk }; sk += rnd(.05, .1); return s; });
-    return { hits, flashEnd, bolts, strikes, arrive: params("glitch"), end: flashEnd + ARRIVE_GLITCH + ARRIVE_REACH + 60 };
+    // everything is struck at the SAME moment (app rule since B5g): apps, chatbox and now the clock
+    const strikes = order.map(i => ({ i, k: RAISE + .06 }));
+    // 4.6d: 3 tear steps; each a stack of thin horizontal strips, fewer of them still black
+    const tear = TEAR_KEEP.map(keep => {
+      const out = []; let y = 0;
+      while (y < 1) {
+        const h = rnd(.01, .06), torn = Math.random() >= keep;
+        out.push({ y, h, keep: !torn, bar: torn && Math.random() < .35 ? (Math.random() < .55 ? "#00B144" : CRIMSON) : null, x: rnd(-.1, .6), w: rnd(.15, .6) });
+        y += h;
+      }
+      return out;
+    });
+    return { hits, flashEnd, bolts, strikes, tear, arrive: params("glitch"), end: flashEnd + ARRIVE_GLITCH + ARRIVE_REACH + 60 };
   }
 
   function params(shape) {
@@ -327,7 +392,7 @@
     const a = document.createElement("div"); a.className = "mark arrive";
     a.style.left = (seq.flashEnd / seq.end * 100) + "%"; a.style.right = "0";
     track.insertBefore(a, head);
-    for (const [at, txt] of [[seq.flashEnd, `she glitches in · ${ARRIVE_GLITCH} ms`], [seq.flashEnd + ARRIVE_GLITCH, `hand goes up · ${Math.round(ARRIVE_REACH * RAISE)} ms`], [seq.flashEnd + ARRIVE_GLITCH + ARRIVE_REACH * RAISE, `lightning strikes, apps appear · ${Math.round(ARRIVE_REACH * (1 - RAISE))} ms`]]) {
+    for (const [at, txt] of [[seq.flashEnd, `black glitches away (${TEAR_MS} ms), she glitches in · ${ARRIVE_GLITCH} ms`], [seq.flashEnd + ARRIVE_GLITCH, `hand goes up · ${Math.round(ARRIVE_REACH * RAISE)} ms`], [seq.flashEnd + ARRIVE_GLITCH + ARRIVE_REACH * RAISE, `lightning strikes clock + apps at once · then snaps to home`]]) {
       const li = document.createElement("li"); li.className = "arrive";
       li.textContent = `${String(Math.round(at)).padStart(4, " ")} ms  ${txt}`; list.appendChild(li);
     }
@@ -337,7 +402,8 @@
   function frame(now) {
     const speed = slow ? .25 : 1;
     const t = (now - t0) * speed;
-    ctx.fillStyle = INK; ctx.fillRect(0, 0, W, H);
+    if (t < seq.flashEnd) { ctx.fillStyle = INK; ctx.fillRect(0, 0, W, H); }
+    else { drawWall(); drawTear(t - seq.flashEnd); }
     for (const h of seq.hits) if (t >= h.t && t < h.t + h.dur) drawHit(h, (t - h.t) / h.dur);
     if (t >= seq.flashEnd) drawArrival(t - seq.flashEnd);
     head.style.left = Math.min(t / seq.end, 1) * 100 + "%";
@@ -350,7 +416,7 @@
     cancelAnimationFrame(raf); clearTimeout(nextTimer);
     rest.hidden = true; seq = makeSeq(); renderTimeline();
     if (reduced && !loop) { // show one still hit instead of strobing
-      ctx.fillStyle = INK; ctx.fillRect(0, 0, W, H); drawReach(1); drawDock(1); rest.hidden = false; return;
+      drawWall(); drawReach(1); drawDock(1); rest.hidden = false; return;
     }
     t0 = performance.now(); raf = requestAnimationFrame(frame);
   }
@@ -358,7 +424,7 @@
   document.getElementById("replay").addEventListener("click", play);
   slowBtn.addEventListener("click", () => { slow = !slow; slowBtn.setAttribute("aria-pressed", String(slow)); play(); });
   loopBtn.addEventListener("click", () => { loop = !loop; loopBtn.setAttribute("aria-pressed", String(loop)); if (loop) play(); });
-  new ResizeObserver(() => { resize(); if (seq && rest.hidden === false) { ctx.fillStyle = INK; ctx.fillRect(0, 0, W, H); } }).observe(phone);
+  new ResizeObserver(() => { resize(); if (seq && rest.hidden === false) { drawWall(); drawReach(1); drawDock(1); } }).observe(phone);
 
   resize(); play();
 })();
