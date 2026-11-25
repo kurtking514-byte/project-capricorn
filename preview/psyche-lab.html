@@ -32,6 +32,7 @@
     overflow: hidden; user-select: none; -webkit-user-select: none;
   }
   canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #fx { z-index: 5; pointer-events: none; }
   .clock { position: absolute; left: 0; right: 0; top: 3.2%; text-align: center; z-index: 2; }
   .clock .t { font: 400 44px/1 var(--russo); letter-spacing: .02em; color: var(--accent); }
   .clock .d { font: 600 10px/1 var(--mono); letter-spacing: .16em; color: var(--dim); margin-top: 6px; text-transform: uppercase; }
@@ -85,6 +86,7 @@
     <div class="clock"><div class="t" id="clk">8:40</div><div class="d" id="date">WED 25 NOV</div></div>
     <div class="bubble" id="bubble"><b>CAPRI</b><span id="line"></span></div>
     <div class="chat">Talk to Capri…</div>
+    <canvas id="fx"></canvas>
   </div>
 
   <div class="side">
@@ -110,12 +112,26 @@
       <button data-t="accent" class="on">Accent color</button>
     </div>
 
+    <div class="row" id="styles">
+      <div class="row-label">Switch glitch (step 4.3): plays whenever the psyche changes</div>
+      <button data-s="bars" aria-pressed="true">Bars + color flicker</button>
+      <button data-s="reappear" aria-pressed="false">Out and back in</button>
+      <button data-s="hit" aria-pressed="false">Red hit</button>
+    </div>
+    <div class="row">
+      <button id="switchNow" class="on">Switch now</button>
+      <button id="slow" aria-pressed="false">Slow ×4</button>
+    </div>
+
     <div class="readout">
       <h2 id="rtitle">Calm</h2>
       <ul id="rlist"></ul>
     </div>
     <p class="note"><b>Auto:</b> PROTECTIVE takes over whenever battery is 15% or lower or screen time is 5 h or more. Otherwise CALM 5:00–10:59, NORMAL 11:00–23:59, CHAOTIC 0:00–4:59.
-      The lines in her bubble are only samples of the tone (her real lines are step 4.2), and the switch glitch is step 4.3.
+      <b>Switch glitch:</b> "Switch now" jumps to the next psyche; moving a slider across a border or tapping a psyche also plays it.
+      <b>Bars + color flicker</b> (0.25 s): heavy green + crimson bars over her while the accent flickers old / new / old / new.
+      <b>Out and back in</b> (0.9 s): she glitches out, a beat of nothing, then glitches back in like after a swipe, already in the new color.
+      <b>Red hit</b> (0.2 s): the command flash (full crimson, then a slash) and she snaps into the new psyche's pose.
       The figure is an original stand-in; in the app she uses her real allowed standing poses.</p>
   </div>
 </div>
@@ -139,6 +155,7 @@
   const ALL = PSY.NORMAL.poses;
 
   const phone = document.getElementById("phone"), cv = document.getElementById("c"), ctx = cv.getContext("2d");
+  const fxc = document.getElementById("fx"), fx = fxc.getContext("2d");
   const $ = id => document.getElementById(id);
   const tells = { poses: true, rhythm: true, accent: true };      // the clock tag was removed (user, 4.1)
   let choice = "AUTO";
@@ -211,7 +228,8 @@
   }
   function resize() {
     const r = phone.getBoundingClientRect(); D = Math.min(devicePixelRatio || 1, 2); W = r.width; H = r.height;
-    cv.width = Math.round(W * D); cv.height = Math.round(H * D); ctx.setTransform(D, 0, 0, D, 0, 0);
+    for (const c of [cv, fxc]) { c.width = Math.round(W * D); c.height = Math.round(H * D); }
+    ctx.setTransform(D, 0, 0, D, 0, 0); fx.setTransform(D, 0, 0, D, 0, 0);
     for (const k in cache) delete cache[k];
   }
 
@@ -219,7 +237,8 @@
   const rng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
     t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   let pose = "neutral", from = "neutral", changedAt = -1e9, seed = 1, nextAt = 0, glanceBack = null;
-  function setPose(p) { if (p === pose) return; from = pose; pose = p; changedAt = performance.now(); seed++; }
+  let vnow = 0, lastReal = performance.now(), slow = 1;       // virtual clock, so "Slow ×4" slows everything
+  function setPose(p) { if (p === pose) return; from = pose; pose = p; changedAt = vnow; seed++; }
   function drawStrips(p) {
     const r = rng(seed * 7 + (p < .5 ? 0 : 997)), split = (6 + 4 * (r() * 2 - 1)) * (r() < .5 ? 1 : -1);
     let y = 0;
@@ -245,7 +264,8 @@
   function apply(force) {
     const p = choice === "AUTO" ? autoPsyche() : choice;
     const ps = PSY[p];
-    document.documentElement.style.setProperty("--accent", tells.accent ? ps.accent : "#8EF5ED");
+    const accentOf = k => tells.accent ? PSY[k].accent : "#8EF5ED";
+    if (!sw) document.documentElement.style.setProperty("--accent", accentOf(p));
     $("rtitle").textContent = p.charAt(0) + p.slice(1).toLowerCase();
     const set = tells.poses ? ps.poses : ALL;
     const hold = tells.rhythm ? ps.hold : PSY.NORMAL.hold;
@@ -256,9 +276,12 @@
       "Accent: " + (tells.accent ? ps.accent : "unchanged"),
     ].map(t => `<li>${t}</li>`).join("");
     if (p !== current || force) {
+      const old = current;
       current = p;
       lineIdx = 0; $("line").textContent = ps.lines[0];
-      const first = set[0]; setPose(first); nextAt = performance.now() + 600;
+      nextAt = vnow + 900;
+      if (old && old !== p) startSwitch(accentOf(old), accentOf(p), set[0]);
+      else setPose(set[0]);
     }
   }
   function fmtHour(h) { const H = Math.floor(h), m = Math.round((h - H) * 60); return `${H}:${String(m).padStart(2, "0")}`; }
@@ -277,33 +300,112 @@
     tells[b.dataset.t] = !tells[b.dataset.t]; b.classList.toggle("on", tells[b.dataset.t]); apply(true);
   }));
 
+  // ---------- 4.3 switch glitch ----------
+  let style = "bars", sw = null;
+  const SW_LEN = { bars: 250, reappear: 900, hit: 260 };
+  function startSwitch(fromAccent, toAccent, toPose) {
+    sw = { style, at: vnow, fromAccent, toAccent, toPose, seed: Math.floor(Math.random() * 1e6), posed: false };
+    if (style === "bars") { setPose(toPose); sw.posed = true; }
+  }
+  const setAccent = c => document.documentElement.style.setProperty("--accent", c);
+  // returns true if the switch is drawing her itself
+  function drawSwitch() {
+    if (!sw) return false;
+    const k = vnow - sw.at, { u, top, cx } = geo(), step = Math.floor(k / 83);
+    if (k >= SW_LEN[sw.style]) { setAccent(sw.toAccent); sw = null; return false; }
+    if (sw.style === "bars") {
+      setAccent([sw.toAccent, sw.fromAccent, sw.toAccent][step] || sw.toAccent);
+      const k2 = vnow - changedAt;
+      if (k2 < 150) drawStrips(k2 / 150); else ctx.drawImage(fig(pose, null), 0, 0, W, H);
+      drawBars(ctx, step, [1, .6, .3][step] || 0, sw.seed, cx, top, u);
+      return true;
+    }
+    if (sw.style === "reappear") {
+      if (k < 250) {                                   // out: strips falling away + bars
+        drawOut(k / 250); drawBars(ctx, step, [1, .6, .3][step] || 0, sw.seed, cx, top, u); return true;
+      }
+      if (k < 400) { setAccent(sw.toAccent); return true; }    // a beat of nothing
+      if (!sw.posed) { pose = from = sw.toPose; sw.posed = true; }
+      const f = (k - 400) / 500;                       // back in, like the boot appear
+      if (f < .35) { ctx.globalAlpha = .55; ctx.drawImage(fig(pose, CRIMSON), 0, 0, W, H); ctx.globalAlpha = 1; }
+      else ctx.drawImage(fig(pose, null), 0, 0, W, H);
+      drawBars(ctx, Math.floor((k - 400) / 83), f < .6 ? 1 : 1 - (f - .6) / .4, sw.seed + 1, cx, top, u);
+      return true;
+    }
+    // red hit: full crimson 70 ms, gap 40, slash 60, she snaps into the new pose under it
+    setAccent(sw.toAccent);
+    if (k < 70) { fx.fillStyle = CRIMSON; fx.fillRect(0, 0, W, H); }
+    else if (k >= 110 && k < 170) {
+      fx.fillStyle = CRIMSON; fx.beginPath();
+      fx.moveTo(0, H * .62); fx.lineTo(W, H * .30); fx.lineTo(W, H * .42); fx.lineTo(0, H * .74); fx.closePath(); fx.fill();
+    }
+    if (k >= 70 && !sw.posed) { setPose(sw.toPose); sw.posed = true; }
+    return false;
+  }
+  function drawOut(p) {
+    const r = rng(seed * 13 + Math.floor(p * 3));
+    let y = 0;
+    while (y < H) {
+      const sh = H * (.012 + .045 * r()), jump = r() * 2 - 1, dx = jump * W * .14 * p;
+      if (r() > p) {
+        ctx.drawImage(fig(pose, PINK), 0, y * D, cv.width, sh * D, dx + 7, y, W, sh);
+        if (r() > .3) ctx.drawImage(fig(pose, null), 0, y * D, cv.width, sh * D, dx, y, W, sh);
+      }
+      y += sh;
+    }
+  }
+  function drawBars(g, step, I, seed, cx, top, u) {
+    if (I <= 0) return;
+    const r = rng(step * 7919 + seed * 104729);
+    const n = Math.round(4 + 9 * I * r());
+    for (let i = 0; i < n; i++) {
+      const y = top - u * .3 + r() * u * 1.25, h = H * (.003 + .022 * r() * r()), dir = r() < .5 ? -1 : 1;
+      const x0 = cx + dir * u * (r() * .18) - dir * u * .05, len = W * (.05 + .28 * r());
+      g.fillStyle = r() < .55 ? GREEN : CRIMSON; g.fillRect(dir > 0 ? x0 : x0 - len, y, len, h);
+    }
+  }
+  document.querySelectorAll("[data-s]").forEach(b => b.addEventListener("click", () => {
+    style = b.dataset.s;
+    document.querySelectorAll("[data-s]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    $("switchNow").click();
+  }));
+  $("switchNow").addEventListener("click", () => {
+    const order = ["CALM", "NORMAL", "CHAOTIC", "PROTECTIVE"];
+    choice = order[(order.indexOf(current) + 1) % 4];
+    document.querySelectorAll("[data-p]").forEach(x => x.setAttribute("aria-pressed", x.dataset.p === choice));
+    apply(false);
+  });
+  $("slow").addEventListener("click", () => { slow = slow === 1 ? 4 : 1; $("slow").setAttribute("aria-pressed", slow === 4); });
+
   // ---------- idle loop ----------
-  function tick(now) {
+  let glanceAt = 0;
+  function tick() {
+    const real = performance.now(); vnow += (real - lastReal) / slow; lastReal = real;
+    const now = vnow;
     const ps = PSY[current];
     const set = tells.poses ? ps.poses : ALL;
     const hold = tells.rhythm ? ps.hold : PSY.NORMAL.hold;
-    if (glanceBack && now >= glanceBack.at) { setPose(glanceBack.pose); glanceBack = null; }
-    if (now >= nextAt && hold[0] < 90000) {
-      const opts = set.filter(p => p !== pose);
-      const next = opts.length ? opts[Math.floor(Math.random() * opts.length)] : pose;
-      setPose(next);
-      // chaotic: sometimes a quick 250 ms glance away and back
-      if (tells.rhythm && ps.glance && Math.random() < ps.glance && next !== "lookL" && next !== "lookR") {
-        later = now + 400 + Math.random() * 400;
-        glanceAt = later;
+    if (!sw) {
+      if (glanceBack && now >= glanceBack.at) { setPose(glanceBack.pose); glanceBack = null; }
+      if (now >= nextAt && hold[0] < 90000) {
+        const opts = set.filter(p => p !== pose);
+        const next = opts.length ? opts[Math.floor(Math.random() * opts.length)] : pose;
+        setPose(next);
+        if (tells.rhythm && ps.glance && Math.random() < ps.glance && next !== "lookL" && next !== "lookR") glanceAt = now + 400 + Math.random() * 400;
+        nextAt = now + hold[0] + Math.random() * (hold[1] - hold[0]);
+        if (Math.random() < .5) { lineIdx = (lineIdx + 1) % ps.lines.length; $("line").textContent = ps.lines[lineIdx]; }
       }
-      nextAt = now + hold[0] + Math.random() * (hold[1] - hold[0]);
-      if (Math.random() < .5) { lineIdx = (lineIdx + 1) % ps.lines.length; $("line").textContent = ps.lines[lineIdx]; }
+      if (glanceAt && now >= glanceAt) {
+        const back = pose; setPose(Math.random() < .5 ? "lookL" : "lookR"); glanceBack = { at: now + 250, pose: back }; glanceAt = 0;
+      }
     }
-    if (glanceAt && now >= glanceAt) {
-      const back = pose; setPose(Math.random() < .5 ? "lookL" : "lookR"); glanceBack = { at: now + 250, pose: back }; glanceAt = 0;
+    ctx.clearRect(0, 0, W, H); fx.clearRect(0, 0, W, H);
+    if (!drawSwitch()) {
+      const k = now - changedAt;
+      if (k < 150) drawStrips(k / 150); else ctx.drawImage(fig(pose, null), 0, 0, W, H);
     }
-    ctx.clearRect(0, 0, W, H);
-    const k = now - changedAt;
-    if (k < 150) drawStrips(k / 150); else ctx.drawImage(fig(pose, null), 0, 0, W, H);
     requestAnimationFrame(tick);
   }
-  let later = 0, glanceAt = 0;
 
   new ResizeObserver(resize).observe(phone);
   resize(); sliders(); apply(true);

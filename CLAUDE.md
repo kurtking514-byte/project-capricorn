@@ -142,7 +142,7 @@ Then:
 ### Phase 4 — Her world
 - [x] 4.1 (2026-11-25, approved + ported; builds; not seen on phone; `ui/Psyche.kt`: `Psyche.update` once a minute from `CapriSpriteFigure`; idle loop uses `PsycheKind` poses/gap/hold/glance/stare instead of the C4 pace; accent on the clock + speech bubble edge; night dozing still happens in CHAOTIC) Psyches (moods) by time of day / battery — preview first: `preview/psyche-lab.html`, https://claude.ai/artifact/FZixyRvdSHrggbHsHtcxNP. User picked 4 psyches: CALM 5–10:59, NORMAL 11–23:59, CHAOTIC 0–4:59, PROTECTIVE overrides at battery ≤ 15% or screen time ≥ 5 h. Tells: favorite poses, idle rhythm, accent color (user removed the PSYCHE tag under the clock); preview lets the user turn each on/off
 - [x] 4.2 (2026-11-25, builds; not seen on phone) Psyche-specific reply lines in `CapriBrain` (`psy(normal, calm, chaotic, protective)`). User picked personality lines only: greeting, pokes 1/2/3+, hold, back after swipe, wake up, hi, thanks, unknown chat. Command confirmations stay the same in every psyche
-- [ ] 4.3 Glitch effect on psyche switch — preview first
+- [ ] 4.3 (preview built 2026-11-25, waiting for the user's pick) Glitch effect on psyche switch — preview first: added to `preview/psyche-lab.html` (same link as 4.1). 3 styles to pick from: Bars + color flicker (0.25 s), Out and back in (0.9 s, like 3.4), Red hit (0.2 s, C3 flash + pose snap). Switch now + Slow ×4 buttons
 - [ ] 4.4 In-character permission onboarding
 - [ ] 4.5 Realme battery / auto-launch guide
 - [ ] 4.6 Phone wallpaper as the home background (user asked 2026-11-18, for later; current background looks bad). Split into:
