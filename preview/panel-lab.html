@@ -1,0 +1,187 @@
+<title>Capri Panel Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,400;0,600;0,800;1,900&family=JetBrains+Mono:wght@400;600&family=Russo+One&display=swap">
+<style>
+  /* Same single dark look as the other labs. The phone shows the home screen over a stand-in wallpaper. */
+  :root {
+    color-scheme: dark;
+    --ink: #080E15; --panel-rgb: 12, 26, 34; --crimson: #BC002B; --pink: #FF3C68; --green: #00B144; --cyan: #8EF5ED;
+    --acid: #F4ED75; --text: #E6F4F4; --dim: #7E949C; --line: #1B2E38;
+    --accent: #8EF5ED; --a: .65;
+    --display: "Exo 2", "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+    --russo: "Russo One", "Exo 2", system-ui, sans-serif;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--ink); color: var(--text); font-family: var(--display);
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 28px; box-sizing: border-box;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+  @media (max-width: 760px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+  header { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font-weight: 800; font-size: 20px; letter-spacing: .02em; text-transform: uppercase; }
+  h1 span { color: var(--pink); }
+  .step { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--acid); }
+
+  /* ---------- phone ---------- */
+  .phone {
+    position: relative; width: 100%; max-width: 100%; aspect-ratio: 9 / 19.5; border: 2px solid var(--line); overflow: hidden;
+    clip-path: polygon(0 14px, 14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px));
+    display: flex; flex-direction: column; padding: 34px 14px 14px; box-sizing: border-box; gap: 10px;
+  }
+  /* stand-in wallpapers: flat shapes only */
+  .wp-bright { background:
+      radial-gradient(circle at 78% 20%, #FFC93C 0 22%, transparent 22.2%),
+      radial-gradient(circle at 15% 70%, #FF7A59 0 18%, transparent 18.2%),
+      linear-gradient(180deg, #FFF4DC 0 55%, #F9D9A8 55% 75%, #EDB47A 75%); }
+  .wp-busy { background:
+      repeating-linear-gradient(35deg, #2D6CDF 0 18px, #F2F2F2 18px 30px, #E8483B 30px 44px, #1C1C1C 44px 52px, #F7C548 52px 70px); }
+  .wp-sky { background: linear-gradient(180deg, #5DB7F2 0 30%, #8ACDF7 30% 52%, #C7E8FB 52% 70%, #3E8E4F 70% 82%, #2B6B3A 82%); }
+  .wp-dark { background:
+      radial-gradient(circle at 70% 35%, #1E2A44 0 26%, transparent 26.2%),
+      linear-gradient(180deg, #0A0D14 0 60%, #121826 60%); }
+
+  .cut { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
+  .cut2 { clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); }
+  .pane { background: rgba(var(--panel-rgb), var(--a)); }
+
+  .clock { padding: 8px 12px 6px; }
+  .clock .top { display: flex; align-items: center; gap: 8px; font: 700 9px/1 var(--mono); letter-spacing: .3em; color: var(--acid); }
+  .clock .top i { flex: 1; height: 1px; background: var(--accent); opacity: .4; }
+  .clock .top b { color: var(--dim); font-weight: 400; letter-spacing: .2em; }
+  .clock .row { display: flex; align-items: flex-end; }
+  .time { position: relative; font: italic 900 58px/1 var(--display); letter-spacing: -1px; }
+  .time span { position: absolute; inset: 0; }
+  .time .r { color: var(--pink); transform: translate(-3px, 1px); }
+  .time .c { color: var(--accent); transform: translate(3px, -1px); }
+  .time .w { position: relative; color: var(--text); }
+  .date { margin-left: auto; text-align: right; padding-bottom: 10px; }
+  .date .d { display: inline-block; background: var(--accent); color: var(--ink); font: 900 14px/1 var(--display); letter-spacing: .2em; padding: 3px 6px; }
+  .date .n { font: 11px/1 var(--mono); color: var(--dim); margin-top: 4px; }
+
+  .stage { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-height: 0; }
+  .bubble { position: relative; max-width: 88%; margin-bottom: 14px; }
+  .bbody { padding: 7px 14px 8px; border: 1px solid var(--accent); }
+  .bubble b { display: block; font: 900 9px/1.2 var(--display); letter-spacing: .2em; color: var(--pink); }
+  .bubble p { margin: 2px 0 0; font: 600 14px/1.3 var(--display); min-height: 2.6em; }
+  .tail { position: absolute; left: 50%; bottom: -10px; width: 18px; height: 10px; transform: translateX(-50%); }
+  .fig { width: 46%; aspect-ratio: 1 / 2.1; }
+
+  .chat { padding: 11px 12px; border: 1.5px solid var(--accent); font: 14px var(--display); color: var(--dim); }
+  .dock { display: flex; justify-content: space-around; padding: 10px 8px; border: 1px solid rgba(142, 245, 237, .5); }
+  .dock i { width: 40px; height: 40px; display: block; clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
+
+  /* ---------- side ---------- */
+  .side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row-label { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); width: 100%; }
+  .side button {
+    font: 600 13px/1 var(--display); letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text); background: #0C1A22; border: 1px solid var(--line); padding: 11px 14px; cursor: pointer;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  .side button[aria-pressed="true"] { background: var(--pink); color: #000; border-color: var(--pink); }
+  .side button:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
+  /* mock of the row on the Gestures settings screen */
+  .mock { background: #000; border: 1px solid var(--line); padding: 12px 14px; }
+  .mock .h { font: 600 10px/1 var(--mono); letter-spacing: .18em; color: var(--crimson); padding-bottom: 6px; border-bottom: 2px solid var(--crimson); }
+  .mock .t { font: 400 15px/1.2 var(--russo); margin-top: 10px; }
+  .mock .s { font: 11px/1.4 var(--mono); color: var(--dim); margin: 2px 0 8px; }
+  .mock .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .mock .chips span { font: 400 12px/1 var(--russo); padding: 7px 10px; border: 1.5px solid var(--dim); cursor: pointer; }
+  .mock .chips span.on { background: var(--crimson); border-color: var(--crimson); color: #000; }
+  .note { font-size: 13px; color: var(--dim); line-height: 1.5; margin: 0; }
+  .note b { color: var(--text); font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Capri <span>panels</span></h1>
+    <div class="step">Step 4.6b · readable over any wallpaper</div>
+  </header>
+
+  <div class="phone wp-bright" id="phone">
+    <div class="clock pane cut" id="clock">
+      <div class="top">// LOCAL TIME <i></i><b>NC-SYS</b></div>
+      <div class="row">
+        <div class="time"><span class="r">9:41</span><span class="c">9:41</span><span class="w">9:41</span></div>
+        <div class="date"><span class="d">WED</span><div class="n">25.11.26</div></div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="bubble" id="bubble"><div class="bbody pane cut"><b>CAPRI //</b><p id="line">Nice wallpaper. I still look better.</p></div>
+        <svg class="tail" viewBox="0 0 18 10" aria-hidden="true"><path d="M0 0 L18 0 L9 10 Z" fill="rgb(12,26,34)" id="tailFill"/><path d="M0 0 L9 10 L18 0" fill="none" stroke="var(--accent)" stroke-width="1"/></svg>
+      </div>
+      <!-- original stand-in figure, flat shapes -->
+      <svg class="fig" viewBox="0 0 100 210" aria-hidden="true">
+        <path d="M22 40 Q50 -6 78 40 L84 98 L68 80 L64 112 L36 112 L32 80 L16 98 Z" fill="#BC002B"/>
+        <rect x="34" y="30" width="32" height="36" fill="#F1D3C4"/>
+        <rect x="40" y="44" width="6" height="4" fill="#0B0F14"/><rect x="54" y="44" width="6" height="4" fill="#0B0F14"/>
+        <path d="M30 70 L70 70 L76 140 L24 140 Z" fill="#14202A"/>
+        <path d="M38 72 L62 72 L60 96 L40 96 Z" fill="#00B144"/>
+        <path d="M30 140 L48 140 L46 206 L34 206 Z M52 140 L70 140 L66 206 L54 206 Z" fill="#0E151C"/>
+      </svg>
+    </div>
+
+    <div class="chat pane cut2" id="chat">Talk to Capri…</div>
+    <div class="dock pane cut2" id="dock">
+      <i style="background:#3DDC84"></i><i style="background:#4FC3FF"></i><i style="background:#FF3C68"></i><i style="background:#F4ED75"></i>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="row" id="wps">
+      <div class="row-label">Stand-in wallpaper</div>
+      <button data-wp="bright" aria-pressed="true">Bright</button>
+      <button data-wp="busy" aria-pressed="false">Busy</button>
+      <button data-wp="sky" aria-pressed="false">Sky</button>
+      <button data-wp="dark" aria-pressed="false">Dark</button>
+    </div>
+
+    <div class="mock">
+      <div class="h">HOME SCREEN</div>
+      <div class="t">PANELS</div>
+      <div class="s">Dark see-through panels behind the clock, bubble, chatbox and dock.</div>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="row">
+      <div class="row-label">Or type it in the chat</div>
+      <button id="chatPanels">chat: "panels"</button>
+    </div>
+
+    <p class="note"><b>What changes:</b> the clock and chatbox get the same flat ink panel (cut corners, no glow) that the bubble and dock have, and all four share one strength. The box above is how the new row looks on the Gestures settings screen.</p>
+    <p class="note"><b>Steps:</b> <b>OFF</b> = no panels at all, just the outlines (the wallpaper shows fully); <b>LIGHT</b> 40%; <b>MEDIUM</b> 65% (the start setting); <b>STRONG</b> 85%. Before this step the bubble and dock were 100% solid.</p>
+    <p class="note"><b>Chat "panels"</b> jumps to the next step and she says which one.</p>
+  </div>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const STEPS = [
+    { k: "OFF", a: 0, say: "Panels off. Bold. Hope you can read." },
+    { k: "LIGHT", a: .40, say: "Light panels. Just a hint of me." },
+    { k: "MEDIUM", a: .65, say: "Medium. The sensible choice. Boring, but sensible." },
+    { k: "STRONG", a: .85, say: "Strong panels. Nothing gets in the way of my words." },
+  ];
+  let step = 2;
+  function apply(talk) {
+    const s = STEPS[step];
+    document.documentElement.style.setProperty("--a", s.a);
+    $("tailFill").setAttribute("fill-opacity", s.a);
+    $("chips").innerHTML = STEPS.map((x, i) => `<span class="${i === step ? "on" : ""}" data-i="${i}">${x.k}</span>`).join("");
+    $("chips").querySelectorAll("span").forEach(c => c.addEventListener("click", () => { step = +c.dataset.i; apply(false); }));
+    if (talk) $("line").textContent = s.say;
+  }
+  $("chatPanels").addEventListener("click", () => { step = (step + 1) % STEPS.length; apply(true); });
+  document.querySelectorAll("[data-wp]").forEach(b => b.addEventListener("click", () => {
+    $("phone").className = "phone wp-" + b.dataset.wp;
+    document.querySelectorAll("[data-wp]").forEach(x => x.setAttribute("aria-pressed", x === b));
+  }));
+  apply(false);
+</script>
