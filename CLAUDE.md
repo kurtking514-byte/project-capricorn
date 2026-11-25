@@ -148,7 +148,7 @@ Then:
 - [ ] 4.6 Phone wallpaper as the home background (user asked 2026-11-18, for later; current background looks bad). Split into:
   - [x] 4.6a (2026-11-25, builds; not seen on phone; `res/values/themes.xml` + `HomeScreen` root) Show the system wallpaper behind the launcher: `android:windowShowWallpaper=true` + transparent window background in the theme, and remove the solid home background in `HomeScreen.kt`. No permission needed, live wallpapers work, nothing is read from storage
   - [x] 4.6b (2026-11-25, approved + ported; builds; not seen on phone; `ui/Panels.kt` (prefs "panels"), `CapriColors.Panel.copy(alpha = Panels.alpha)` in HomeScreen Clock / SpeechBubble / chatbox / Dock, PANELS row on the Gestures screen, chat `panels` in CapriBrain; `preview/panel-lab.html`, https://claude.ai/artifact/Hs21NGnwWhSWPVYJqx9csx. User picks: clock + chatbox + bubble + dock all see-through and matched, cut corners, OFF/LIGHT 40%/MEDIUM 65% (start)/STRONG 85% on the Gestures screen + chat `panels` = next step) Readability: flat semi-transparent ink panels behind the clock, speech bubble and chatbox (flat color, no gradient), with a strength setting
-  - 4.6c Chat command `wallpaper` that opens Android's wallpaper picker (`Intent.ACTION_SET_WALLPAPER`)
+  - [x] 4.6c (2026-11-25, builds; not seen on phone; also "change wallpaper" / "background"; search already had the Wallpaper page) Chat command `wallpaper` that opens Android's wallpaper picker (`Intent.ACTION_SET_WALLPAPER`)
   - 4.6d Boot: after the last red flash, the wallpaper is what appears behind her
   - Don't read the wallpaper image with `WallpaperManager.getDrawable()`: it needs storage permission on new Android and isn't needed
 

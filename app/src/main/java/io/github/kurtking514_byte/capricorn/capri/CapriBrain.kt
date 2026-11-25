@@ -449,6 +449,14 @@ class CapriBrain(private val context: Context) {
             return done(pick("Setup. Tap what you want me to do.", "Permissions time. Make it quick."), "setup")
         }
 
+        // 4.6c: Android's own wallpaper picker (the wallpaper shows behind her since 4.6a)
+        if (Regex("^(change |set |new |pick a |my )?(wallpaper|background)$").matches(t)) {
+            return if (start(Intent(Intent.ACTION_SET_WALLPAPER))) done(pick(
+                "Pick something nice. I have to stand on it.",
+                "New backdrop? Make it worthy of me.",
+            ), "smirk") else "No wallpaper picker on this phone. Tragic."
+        }
+
         // 4.6b: panel strength behind the clock / bubble / chatbox / dock (next step)
         if (t in setOf("panels", "panel", "panel strength")) {
             return done(when (Panels.next(context)) {
