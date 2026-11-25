@@ -43,6 +43,7 @@ object SettingsSearch {
         p("Wallpaper", Intent.ACTION_SET_WALLPAPER, "wallpaper", "background"),
         p("All settings", Settings.ACTION_SETTINGS, "settings"),
         c("Gestures", "gestures", "gestures", "capri settings"),
+        c("Capri setup", "setup", "setup", "permissions", "onboarding"),
         c("Week grid", "classes", "classes", "timetable", "schedule", "week"),
         c("Notification access", "notifs", "notifs", "notification access"),
         c("Usage access", "usage", "usage", "screen time"),

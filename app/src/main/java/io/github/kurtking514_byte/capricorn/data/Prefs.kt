@@ -21,6 +21,13 @@ class Prefs(context: Context) {
         sp.edit().putStringSet(KEY_HIDDEN, keys).apply()
     }
 
+    /** 4.4: the setup screen opens by itself only once, after the very first boot. */
+    fun setupSeen(): Boolean = sp.getBoolean(KEY_SETUP_SEEN, false)
+
+    fun markSetupSeen() {
+        sp.edit().putBoolean(KEY_SETUP_SEEN, true).apply()
+    }
+
     fun launchCounts(): Map<String, Int> =
         sp.all.mapNotNull { (k, v) ->
             if (k.startsWith(COUNT_PREFIX) && v is Int) k.removePrefix(COUNT_PREFIX) to v else null
@@ -35,6 +42,7 @@ class Prefs(context: Context) {
         const val MAX_DOCK = 5
         private const val KEY_DOCK = "dock"
         private const val KEY_HIDDEN = "hidden"
+        private const val KEY_SETUP_SEEN = "setup_seen"
         private const val COUNT_PREFIX = "count:"
     }
 }

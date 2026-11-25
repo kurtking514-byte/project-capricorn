@@ -33,7 +33,7 @@ class CapriBrain(private val context: Context) {
      * 3.9d/e, 3.12: a job for MainActivity hidden in the last reply ("gestures" = settings screen) ("classes" = week grid, "askLocation" =
      * ask for rough location, "fetchWeather" = fetch and report). Returned once; she then wears a smirk.
      */
-    fun consumeRequest(): String? = mood.takeIf { it in setOf("classes", "askLocation", "fetchWeather", "gestures", "askContacts", "pickContact") }?.also { mood = "smirk" }
+    fun consumeRequest(): String? = mood.takeIf { it in setOf("classes", "askLocation", "fetchWeather", "gestures", "askContacts", "pickContact", "setup") }?.also { mood = "smirk" }
 
     /** 3.9e: what she says about the weather. */
     fun weatherLine(w: Weather.Info): String {
@@ -91,6 +91,13 @@ class CapriBrain(private val context: Context) {
     /** 3.14: a settings page opened from the chatbox search. */
     fun settingOpened(title: String): String =
         done(pick("$title. Don't break anything.", "There's your $title. Fiddle away.", "$title, as ordered."), "smirk")
+
+    /** 4.4: her line on the home screen when the setup screen closes. */
+    fun setupClosed(on: Int, total: Int, later: Boolean): String = when {
+        on >= total -> pick("Fully loaded. Let's go.", "All of me, unlocked. Try to keep up.").also { mood = "smug" }
+        later -> pick("Later. Sure. Say \"setup\" when you're ready.", "Fine. Half of me is better than none.").also { mood = "shrug" }
+        else -> pick("Done for now. Say \"setup\" if you want the rest.", "Good enough. For now.").also { mood = "smirk" }
+    }
 
     fun contactsDenied(): String = pick("No contacts, no calls. Dial it yourself then.", "Fine. Keep your friends secret.").also { mood = "shrug" }
 
@@ -434,6 +441,11 @@ class CapriBrain(private val context: Context) {
             val w = Weather.cached(context)
             if (w != null && Weather.fresh(w)) return weatherLine(w)
             return "Checking the sky. Hold on.".also { mood = "fetchWeather" }
+        }
+
+        // 4.4: the setup checklist (opened by MainActivity.say)
+        if (t in setOf("setup", "set up", "permissions", "permission", "onboarding")) {
+            return done(pick("Setup. Tap what you want me to do.", "Permissions time. Make it quick."), "setup")
         }
 
         // 3.12: gesture settings

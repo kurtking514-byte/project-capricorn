@@ -6,6 +6,9 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.LauncherApps
 import android.os.BatteryManager
+import android.os.Build
+import android.app.role.RoleManager
+import android.provider.Settings
 import android.os.Bundle
 import android.os.UserHandle
 import android.widget.Toast
@@ -43,6 +46,9 @@ import io.github.kurtking514_byte.capricorn.ui.DRAWER_CLOSE_MS
 import io.github.kurtking514_byte.capricorn.ui.AppDrawer
 import io.github.kurtking514_byte.capricorn.ui.ClassGrid
 import io.github.kurtking514_byte.capricorn.ui.GestureScreen
+import io.github.kurtking514_byte.capricorn.ui.Setup
+import io.github.kurtking514_byte.capricorn.ui.SetupItem
+import io.github.kurtking514_byte.capricorn.ui.SetupScreen
 import io.github.kurtking514_byte.capricorn.data.GestureJob
 import io.github.kurtking514_byte.capricorn.data.Gesture
 import io.github.kurtking514_byte.capricorn.data.Gestures
@@ -78,6 +84,7 @@ class MainActivity : ComponentActivity() {
     private var launchCounts by mutableStateOf<Map<String, Int>>(emptyMap())
     private var drawerOpen by mutableStateOf(false)
     private var gesturesOpen by mutableStateOf(false)              // 3.12 gesture settings
+    private var setupOpen by mutableStateOf(false)                 // 4.4 setup checklist
     private var classesOpen by mutableStateOf(false)               // 3.9d week grid
     private var showBoot by mutableStateOf(true)
     private var resumeTick by mutableIntStateOf(0)
@@ -107,6 +114,7 @@ class MainActivity : ComponentActivity() {
                 window.decorView.postDelayed({ if (contactPick === shown) contactPick = null }, 8_000)
             }
             "gestures" -> gesturesOpen = true                                              // 3.12
+            "setup" -> setupOpen = true                                                    // 4.4
             "classes" -> classesOpen = true                                                // 3.9d week grid
             "askLocation" -> askLocation.launch(Manifest.permission.ACCESS_COARSE_LOCATION) // 3.9e
             "fetchWeather" -> fetchWeather()
@@ -126,6 +134,53 @@ class MainActivity : ComponentActivity() {
     private val askContacts = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         val name = brain.pendingCall
         say(if (ok && name != null) brain.call(name) else brain.contactsDenied())
+    }
+
+    // 4.4: permissions asked from the setup screen. If Android answers "no" at once (it stopped
+    // showing the pop-up after earlier no's), open the page where it can still be switched on.
+    private var setupAskedAt = 0L
+    private fun answeredAtOnce() = android.os.SystemClock.uptimeMillis() - setupAskedAt < 400
+
+    private val askSetupPerm = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        if (ok) return@registerForActivityResult
+        if (answeredAtOnce()) openSetting(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null))
+        else Setup.deny()
+    }
+    private val askHomeRole = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        if (r.resultCode == RESULT_OK) return@registerForActivityResult
+        if (answeredAtOnce()) openSetting(Settings.ACTION_HOME_SETTINGS) else Setup.deny()
+    }
+
+    private fun setupAllow(item: SetupItem) {
+        setupAskedAt = android.os.SystemClock.uptimeMillis()
+        when (item) {
+            SetupItem.HOME -> {
+                val rm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) getSystemService(RoleManager::class.java) else null
+                if (rm != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && rm.isRoleAvailable(RoleManager.ROLE_HOME)) {
+                    askHomeRole.launch(rm.createRequestRoleIntent(RoleManager.ROLE_HOME))
+                } else openSetting(Settings.ACTION_HOME_SETTINGS)
+            }
+            SetupItem.OVERLAY -> openSetting(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            SetupItem.NOTIFS -> openSetting(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+            SetupItem.USAGE -> openSetting(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+            SetupItem.DND -> openSetting(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+            SetupItem.LOCATION -> askSetupPerm.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+            SetupItem.CONTACTS -> askSetupPerm.launch(Manifest.permission.READ_CONTACTS)
+        }
+    }
+
+    private fun openSetting(action: String, data: Uri? = null) {
+        try {
+            startActivity(Intent(action).apply { if (data != null) setData(data) })
+        } catch (e: Exception) {
+            try { startActivity(Intent(Settings.ACTION_SETTINGS)) } catch (_: Exception) { }
+        }
+    }
+
+    private fun closeSetup(later: Boolean) {
+        setupOpen = false
+        val total = SetupItem.entries.size
+        say(brain.setupClosed(SetupItem.entries.count { it.isOn(this) }, total, later))
     }
 
     private fun fetchWeather() = Weather.refresh(this, force = true) { w ->
@@ -231,7 +286,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             CapriTheme {
                 // A launcher never "goes back" past home; back just closes the drawer.
-                BackHandler { if (gesturesOpen) gesturesOpen = false else if (classesOpen) classesOpen = false else drawerOpen = false }
+                BackHandler { if (setupOpen) closeSetup(true) else if (gesturesOpen) gesturesOpen = false else if (classesOpen) classesOpen = false else drawerOpen = false }
 
                 val byKey = remember(apps) { apps.associateBy { it.key } }
                 val dockApps = remember(byKey, dockKeys) { dockKeys.mapNotNull { byKey[it] } }
@@ -308,11 +363,16 @@ class MainActivity : ComponentActivity() {
                     }
                     if (classesOpen) ClassGrid(onClose = { classesOpen = false })
                     if (gesturesOpen) GestureScreen(onClose = { gesturesOpen = false })
+                    if (setupOpen) SetupScreen(onAllow = ::setupAllow, onClose = ::closeSetup)
                     AnimatedVisibility(visible = showBoot, enter = EnterTransition.None, exit = fadeOut(tween(250))) {
                         BootOverlay(skin = skin, onDone = {
                             if (showBoot) {
                                 showBoot = false
                                 say(brain.greeting())
+                                if (!prefs.setupSeen()) {               // 4.4: first launch only
+                                    prefs.markSetupSeen()
+                                    setupOpen = true
+                                }
                             }
                         })
                     }
