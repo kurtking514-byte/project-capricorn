@@ -1,0 +1,242 @@
+<title>Capri Suggest Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,400;0,600;0,800;1,900&family=JetBrains+Mono:wght@400;600&family=Russo+One&display=swap">
+<style>
+  /* Same single dark look as the other labs. The phone shows the home screen over a stand-in wallpaper. */
+  :root {
+    color-scheme: dark;
+    --ink: #080E15; --crimson: #BC002B; --pink: #FF3C68; --green: #00B144; --cyan: #8EF5ED;
+    --acid: #F4ED75; --text: #E6F4F4; --dim: #7E949C; --line: #1B2E38;
+    --pane: rgba(12, 26, 34, .65);
+    --display: "Exo 2", "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+    --russo: "Russo One", "Exo 2", system-ui, sans-serif;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--ink); color: var(--text); font-family: var(--display);
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 28px; box-sizing: border-box;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 24px; align-items: start; }
+  @media (max-width: 760px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+  header { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font-weight: 800; font-size: 20px; letter-spacing: .02em; text-transform: uppercase; }
+  h1 span { color: var(--pink); }
+  .step { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--acid); }
+
+  /* ---------- phone ---------- */
+  .phone {
+    position: relative; width: 100%; max-width: 100%; aspect-ratio: 9 / 19.5; border: 2px solid var(--line); overflow: hidden;
+    clip-path: polygon(0 14px, 14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px));
+    display: flex; flex-direction: column; padding: 30px 14px 14px; box-sizing: border-box; gap: 9px;
+    background: linear-gradient(180deg, #5DB7F2 0 30%, #8ACDF7 30% 52%, #C7E8FB 52% 70%, #3E8E4F 70% 82%, #2B6B3A 82%);
+  }
+  .cut { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
+  .cut2 { clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); }
+  .pane { background: var(--pane); }
+
+  .clock { padding: 8px 12px 6px; }
+  .clock .top { display: flex; align-items: center; gap: 8px; font: 700 9px/1 var(--mono); letter-spacing: .3em; color: var(--acid); }
+  .clock .top i { flex: 1; height: 1px; background: var(--cyan); opacity: .4; }
+  .clock .row { display: flex; align-items: flex-end; }
+  .time { position: relative; font: italic 900 52px/1 var(--display); letter-spacing: -1px; }
+  .time span { position: absolute; inset: 0; }
+  .time .r { color: var(--pink); transform: translate(-3px, 1px); }
+  .time .c { color: var(--cyan); transform: translate(3px, -1px); }
+  .time .w { position: relative; color: var(--text); }
+  .date { margin-left: auto; text-align: right; padding-bottom: 8px; }
+  .date .d { display: inline-block; background: var(--cyan); color: var(--ink); font: 900 13px/1 var(--display); letter-spacing: .2em; padding: 3px 6px; }
+
+  .stage { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-height: 0; }
+  .bubble { position: relative; max-width: 90%; margin-bottom: 12px; cursor: default; }
+  .bubble.tap { cursor: pointer; }
+  .bbody { padding: 7px 14px 8px; border: 1px solid var(--cyan); }
+  .bubble.tap .bbody { border-color: var(--acid); }
+  .bubble b { display: block; font: 900 9px/1.2 var(--display); letter-spacing: .2em; color: var(--pink); }
+  .bubble p { margin: 2px 0 0; font: 600 14px/1.3 var(--display); min-height: 2.6em; }
+  .bubble .hint { display: block; font: 600 9px/1 var(--mono); letter-spacing: .14em; color: var(--acid); margin-top: 4px; }
+  .tail { position: absolute; left: 50%; bottom: -10px; width: 18px; height: 10px; transform: translateX(-50%); }
+  .fig { width: 40%; aspect-ratio: 1 / 2.1; }
+
+  /* the new row */
+  .now { display: flex; align-items: center; gap: 8px; padding: 7px 10px; }
+  .now .lbl { font: 600 9px/1.2 var(--mono); letter-spacing: .18em; color: var(--acid); writing-mode: vertical-rl; transform: rotate(180deg); }
+  .now .apps { flex: 1; display: flex; justify-content: space-around; }
+  .app { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 56px; cursor: pointer; background: none; border: 0; color: var(--text); padding: 0; }
+  .app i { width: 34px; height: 34px; display: grid; place-items: center; font: 400 15px/1 var(--russo); color: #0B0F14; font-style: normal;
+    clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 7px 100%, 0 calc(100% - 7px)); }
+  .app span { font: 10px/1 var(--display); color: var(--text); max-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .now.snap { animation: snap 83ms steps(1) 2; }
+  @keyframes snap { 0% { transform: translateX(3px); box-shadow: -4px 0 0 var(--green), 4px 0 0 var(--crimson); } 50% { transform: translateX(-2px); } }
+
+  .chat { padding: 11px 12px; border: 1.5px solid var(--cyan); font: 14px var(--display); color: var(--dim); }
+  .dock { display: flex; justify-content: space-around; padding: 9px 8px; border: 1px solid rgba(142, 245, 237, .5); }
+  .dock i { width: 36px; height: 36px; display: grid; place-items: center; font: 400 14px/1 var(--russo); color: #0B0F14; font-style: normal;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
+  .hit { position: absolute; inset: 0; background: var(--pink); pointer-events: none; z-index: 5; }
+  .open { position: absolute; inset: 0; display: grid; place-items: center; background: #0B0F14; color: var(--dim); font: 600 12px var(--mono); letter-spacing: .14em; z-index: 4; text-align: center; white-space: pre-line; cursor: pointer; }
+
+  /* ---------- side ---------- */
+  .side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .row-label { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); width: 100%; }
+  .side button {
+    font: 600 13px/1 var(--display); letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text); background: #0C1A22; border: 1px solid var(--line); padding: 11px 14px; cursor: pointer;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  .side button[aria-pressed="true"] { background: var(--pink); color: #000; border-color: var(--pink); }
+  .side button:focus-visible, .app:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
+  input[type=range] { width: 100%; accent-color: var(--pink); }
+  .hour { font: 600 22px/1 var(--mono); color: var(--text); }
+  .why { font: 12px/1.6 var(--mono); color: var(--dim); margin: 0; padding: 10px 12px; background: #0C1A22; border: 1px solid var(--line); }
+  .why b { color: var(--text); font-weight: 600; }
+  .note { font-size: 13px; color: var(--dim); line-height: 1.5; margin: 0; }
+  .note b { color: var(--text); font-weight: 600; }
+  [hidden] { display: none !important; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Capri <span>suggest</span></h1>
+    <div class="step">Step 5.1 · apps for right now</div>
+  </header>
+
+  <div class="phone" id="phone">
+    <div class="clock pane cut">
+      <div class="top">// LOCAL TIME <i></i></div>
+      <div class="row">
+        <div class="time"><span class="r" id="t1"></span><span class="c" id="t2"></span><span class="w" id="t3"></span></div>
+        <div class="date"><span class="d" id="day"></span></div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="bubble" id="bubble"><div class="bbody pane cut"><b>CAPRI //</b><p id="line">Bored already?</p><span class="hint" id="hint" hidden>TAP TO OPEN</span></div>
+        <svg class="tail" viewBox="0 0 18 10" aria-hidden="true"><path d="M0 0 L18 0 L9 10 Z" fill="rgb(12,26,34)" fill-opacity=".65"/><path d="M0 0 L9 10 L18 0" fill="none" stroke="var(--cyan)" stroke-width="1"/></svg>
+      </div>
+      <!-- original stand-in figure, flat shapes -->
+      <svg class="fig" viewBox="0 0 100 210" aria-hidden="true">
+        <path d="M22 40 Q50 -6 78 40 L84 98 L68 80 L64 112 L36 112 L32 80 L16 98 Z" fill="#BC002B"/>
+        <rect x="34" y="30" width="32" height="36" fill="#F1D3C4"/>
+        <rect x="40" y="44" width="6" height="4" fill="#0B0F14"/><rect x="54" y="44" width="6" height="4" fill="#0B0F14"/>
+        <path d="M30 70 L70 70 L76 140 L24 140 Z" fill="#14202A"/>
+        <path d="M38 72 L62 72 L60 96 L40 96 Z" fill="#00B144"/>
+        <path d="M30 140 L48 140 L46 206 L34 206 Z M52 140 L70 140 L66 206 L54 206 Z" fill="#0E151C"/>
+      </svg>
+    </div>
+
+    <div class="now pane cut" id="now"><span class="lbl">NOW</span><div class="apps" id="apps"></div></div>
+    <div class="chat pane cut2">Talk to Capri…</div>
+    <div class="dock pane cut2" id="dock"></div>
+    <div class="open" id="open" hidden></div>
+    <div class="hit" id="hit" hidden></div>
+  </div>
+
+  <div class="side">
+    <div class="row">
+      <div class="row-label">Pretend it's…</div>
+      <span class="hour" id="hourTxt"></span>
+      <input type="range" id="hour" min="0" max="23" step="1" value="8" aria-label="Hour of day">
+    </div>
+    <div class="row" id="days">
+      <button data-d="weekday" aria-pressed="true">Weekday</button>
+      <button data-d="weekend" aria-pressed="false">Weekend</button>
+    </div>
+    <div class="row">
+      <div class="row-label">She names the top one</div>
+      <button id="home">Press Home</button>
+    </div>
+    <p class="why" id="why"></p>
+
+    <p class="note"><b>The row:</b> the 4 apps you most often open around this hour (an hour either side), from the last 4 weeks of Android's app history, with weekdays and weekends kept apart. Apps already in your dock are skipped. It updates every time you come home and snaps (with a quick glitch) when the picks change. It hides while you type, because search uses that spot.</p>
+    <p class="note"><b>Her line:</b> when you come home she sometimes names the top pick (at most once every 30 minutes, and only if it's a clear favorite for this time). The bubble gets a yellow edge and "TAP TO OPEN"; tap it and it opens with the red hit.</p>
+    <p class="note"><b>Without Usage access</b> the row stays hidden (you can allow it from setup). The apps and usage here are made up.</p>
+  </div>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  // made-up apps and when this pretend person uses them: [peak hour, spread, weekday weight, weekend weight]
+  const APPS = [
+    { n: "Music",    c: "#3DDC84", use: [[8, 1.2, 9, 3], [19, 2, 6, 8]] },
+    { n: "Mail",     c: "#4FC3FF", use: [[10, 1.2, 9, 1], [14, 2, 4, 0]] },
+    { n: "Maps",     c: "#F4ED75", use: [[7.5, .8, 6, 1], [17.5, .8, 6, 2]] },
+    { n: "Chat",     c: "#FF9AB0", use: [[12, 4, 7, 9], [21, 2, 8, 9]] },
+    { n: "Notes",    c: "#E6F4F4", use: [[10, 1.5, 7, 1], [15, 1.5, 6, 1]] },
+    { n: "Video",    c: "#FF6B4A", use: [[21.5, 1.5, 6, 10], [15, 2, 0, 6]] },
+    { n: "Camera",   c: "#B98CFF", use: [[13, 3, 1, 6]] },
+    { n: "Bank",     c: "#7EE0C3", use: [[11, 2, 2, 1]] },
+    { n: "Games",    c: "#FFD25A", use: [[22.5, 1.2, 3, 7], [16, 2, 1, 5]] },
+    { n: "Clock",    c: "#8EF5ED", use: [[6.5, .5, 8, 2], [23, .6, 5, 5]] },
+  ];
+  const DOCK = ["Phone", "Chat", "Camera", "Browser"];   // already pinned: skipped by the row
+  let hour = 8, day = "weekday", lastPicks = "", lastNamed = -99;
+
+  const circ = (a, b) => { const d = Math.abs(a - b) % 24; return Math.min(d, 24 - d); };
+  function score(app, h) {
+    return app.use.reduce((s, [peak, spread, wd, we]) =>
+      s + (day === "weekday" ? wd : we) * Math.exp(-(circ(h, peak) ** 2) / (2 * spread * spread)), 0);
+  }
+  function picks() {
+    // "an hour either side": count this hour fully, the ones next to it half
+    return APPS.filter(a => !DOCK.includes(a.n))
+      .map(a => ({ a, s: score(a, hour) + .5 * score(a, hour - 1) + .5 * score(a, hour + 1) }))
+      .filter(x => x.s > .6).sort((x, y) => y.s - x.s).slice(0, 4);
+  }
+  const icon = (name, color) => `<i style="background:${color}">${name[0]}</i>`;
+  function render() {
+    const hh = String(hour).padStart(2, "0") + ":" + (hour === 8 ? "07" : "30");
+    for (const id of ["t1", "t2", "t3"]) $(id).textContent = hh;
+    $("hourTxt").textContent = hh;
+    $("day").textContent = day === "weekday" ? "WED" : "SAT";
+    $("dock").innerHTML = DOCK.map(n => icon(n, "#5F7480")).join("");
+    const p = picks();
+    $("now").hidden = p.length === 0;
+    $("apps").innerHTML = p.map(({ a }) => `<button class="app" data-n="${a.n}">${icon(a.n, a.c)}<span>${a.n}</span></button>`).join("");
+    $("apps").querySelectorAll(".app").forEach(b => b.addEventListener("click", () => openApp(b.dataset.n)));
+    const key = p.map(x => x.a.n).join();
+    if (lastPicks && key !== lastPicks) { $("now").classList.remove("snap"); void $("now").offsetWidth; $("now").classList.add("snap"); }
+    lastPicks = key;
+    const total = p.reduce((s, x) => s + x.s, 0) || 1;
+    $("why").innerHTML = p.length
+      ? `<b>Why these:</b><br>` + p.map(({ a, s }) => `${a.n.padEnd(7, " ")} ${"█".repeat(Math.max(1, Math.round(s / total * 20)))} ${Math.round(s / total * 100)}%`).join("<br>")
+        + `<br><span>Skipped (in dock): ${DOCK.join(", ")}</span>`
+      : "<b>Nothing stands out at this hour</b>, so the row hides.";
+    return p;
+  }
+  const LINES = [
+    n => `${n}? It's ${hour > 12 ? hour - 12 : hour || 12} ${hour < 12 ? "am" : "pm"}. You always do.`,
+    n => `Let me guess. ${n}. Predictable.`,
+    n => `${n} o'clock. Go on, tap me.`,
+  ];
+  function pressHome() {
+    const p = render();
+    const clear = p.length && (p.length === 1 || p[0].s > p[1].s * 1.4);
+    if (!clear) { say(p.length ? "Nothing obvious right now. Surprise me." : "Bored already?"); return; }
+    // in the app: at most once every 30 min; here it always fires so you can see it
+    const n = p[0].a.n;
+    say(LINES[Math.floor(Math.random() * LINES.length)](n), n);
+    lastNamed = hour;
+  }
+  let tapApp = null;
+  function say(t, app = null) {
+    $("line").textContent = t; tapApp = app;
+    $("bubble").classList.toggle("tap", !!app); $("hint").hidden = !app;
+  }
+  $("bubble").addEventListener("click", () => { if (tapApp) openApp(tapApp); });
+  function openApp(n) {
+    $("hit").hidden = false;
+    setTimeout(() => { $("hit").hidden = true; $("open").textContent = `${n.toUpperCase()} OPENS\n(tap to come back)`; $("open").hidden = false; }, 120);
+  }
+  $("open").addEventListener("click", () => { $("open").hidden = true; say("Back so soon?"); });
+  $("hour").addEventListener("input", e => { hour = +e.target.value; render(); });
+  document.querySelectorAll("[data-d]").forEach(b => b.addEventListener("click", () => {
+    day = b.dataset.d; document.querySelectorAll("[data-d]").forEach(x => x.setAttribute("aria-pressed", x === b)); render();
+  }));
+  $("home").addEventListener("click", pressHome);
+  render();
+</script>
